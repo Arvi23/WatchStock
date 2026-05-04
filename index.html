@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sourcing Buyer Terminal</title>
+    <title>WatchStock</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
@@ -138,15 +138,20 @@
     <!-- 1. INITIAL VIEW (SEARCH SCREEN)            -->
     <!-- ========================================== -->
     <div id="initialView" class="absolute inset-0 z-50 flex flex-col items-center justify-center transition-opacity duration-500" style="background-color: var(--bg-main);">
-        <!-- Sign out on home page -->
-        <button onclick="signOut()" title="Sign Out" class="absolute top-5 right-5 flex items-center gap-2 px-3 py-2 hover:bg-[#252526] transition-colors cursor-pointer" style="background: transparent; border: 1px solid #333; color: var(--text-muted); font-size: 0.75rem; font-family: 'Inter', sans-serif;">
-            <span id="homeUserName" style="color: var(--accent); font-weight: 600;">User</span>
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
-        </button>
+        <!-- Top-right: settings + sign out -->
+        <div class="absolute top-5 right-5 flex items-center gap-2">
+            <button onclick="openSettings()" title="Settings" class="w-9 h-9 flex items-center justify-center hover:bg-[#252526] transition-colors cursor-pointer" style="background: transparent; border: 1px solid #333; color: var(--text-muted);">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+            </button>
+            <button onclick="signOut()" title="Sign Out" class="flex items-center gap-2 px-3 py-2 hover:bg-[#252526] transition-colors cursor-pointer" style="background: transparent; border: 1px solid #333; color: var(--text-muted); font-size: 0.75rem; font-family: 'Inter', sans-serif;">
+                <span id="homeUserName" style="color: var(--accent); font-weight: 600;">User</span>
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
+            </button>
+        </div>
 
         <div class="mb-10 text-center">
-            <h1 class="text-4xl font-bold tracking-tight mb-3">Sourcing Buyer <span style="color: var(--accent)">Terminal</span></h1>
-            <p class="text-lg" style="color: var(--text-muted)">Advanced Financial & Supply Chain Intelligence</p>
+            <h1 class="text-4xl font-bold tracking-tight mb-3">Watch<span style="color: var(--accent)">Stock</span></h1>
+            <p class="text-lg" style="color: var(--text-muted)">AI-Powered Stock Analysis & Market Intelligence</p>
         </div>
 
         <div class="w-full max-w-2xl panel rounded-xl p-8 shadow-2xl relative">
@@ -172,6 +177,24 @@
         <div id="homeHistory" class="w-full max-w-2xl mt-6" style="display:none;">
             <div class="section-label mb-3" style="text-align:center; font-size:0.7rem; letter-spacing:1.5px; color:var(--text-muted);">RECENT COMPANIES</div>
             <div id="homeHistoryItems" class="flex flex-wrap gap-2 justify-center"></div>
+        </div>
+
+        <!-- Market Movers -->
+        <div id="marketMovers" class="w-full max-w-2xl mt-8" style="display:none;">
+            <div class="mb-3 flex items-center justify-center gap-3">
+                <div style="font-size:0.7rem; letter-spacing:1.5px; color:var(--text-muted);" id="moversLabel">MARKET MOVERS</div>
+                <div id="marketStatusBadge" style="display:none; font-size:0.6rem; letter-spacing:1px; color:#555; padding:2px 6px; border:1px solid #2a2a2a;">LAST SESSION</div>
+            </div>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+                <div>
+                    <div style="font-size:0.6rem; letter-spacing:2px; color:#4caf50; margin-bottom:6px; padding-left:2px;">▲ TOP GAINERS</div>
+                    <div id="gainersList"></div>
+                </div>
+                <div>
+                    <div style="font-size:0.6rem; letter-spacing:2px; color:#f44336; margin-bottom:6px; padding-left:2px;">▼ TOP LOSERS</div>
+                    <div id="losersList"></div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -536,6 +559,42 @@
         window.location.href = '/';
     }
 
+    // ---- Market Movers ----
+    async function loadMarketMovers() {
+        try {
+            const res  = await fetch('/market_movers');
+            const data = await res.json();
+            if (!data.gainers?.length && !data.losers?.length) return;
+
+            const isWeekend = [0, 6].includes(new Date().getDay());
+            if (isWeekend) document.getElementById('marketStatusBadge').style.display = 'inline';
+
+            const renderList = (items, containerId, positive) => {
+                const color = positive ? '#4caf50' : '#f44336';
+                document.getElementById(containerId).innerHTML = items.map(item => `
+                    <div onclick="quickSearch('${item.name.replace(/'/g,"\\'")}','${item.ticker}')"
+                         style="cursor:pointer; padding:7px 10px; background:#141414; border:1px solid #222; margin-bottom:3px; display:flex; justify-content:space-between; align-items:center; transition:background 0.15s;"
+                         onmouseover="this.style.background='#1c1c1c'" onmouseout="this.style.background='#141414'">
+                        <div style="min-width:0; overflow:hidden;">
+                            <span style="font-size:0.72rem; font-weight:700; color:#e0e0e0; font-family:monospace;">${item.ticker}</span>
+                            <span style="font-size:0.6rem; color:#555; margin-left:6px;">${item.name}</span>
+                        </div>
+                        <span style="font-size:0.75rem; font-weight:700; color:${color}; white-space:nowrap; margin-left:8px; font-family:monospace;">${item.change_pct >= 0 ? '+' : ''}${item.change_pct}%</span>
+                    </div>`).join('');
+            };
+
+            renderList(data.gainers, 'gainersList', true);
+            renderList(data.losers,  'losersList',  false);
+            document.getElementById('marketMovers').style.display = 'block';
+        } catch(e) {}
+    }
+
+    function quickSearch(company, ticker) {
+        document.getElementById('companyInput').value = company;
+        document.getElementById('tickerInput').value  = ticker;
+        document.getElementById('searchBtn').click();
+    }
+
     // ---- Settings modal ----
     async function openSettings() {
         document.getElementById('settingsModal').style.display = 'flex';
@@ -639,6 +698,7 @@
     let searchHistory = [];
     loadUserSession();
     loadUserHistory();
+    loadMarketMovers();
 
     // --- Score Explanation Modal ---
     function showScoreExplanation(type) {

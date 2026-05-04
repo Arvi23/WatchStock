@@ -13,9 +13,11 @@ Core capabilities:
 - User authentication (login/register) with local SQLite user store
 """
 
+import asyncio
 import json
 import os
 import sqlite3
+import time
 from datetime import datetime
 from urllib.parse import urlparse
 
@@ -1517,6 +1519,57 @@ async def source_add(request: Request, ticker: str = Query(...)):
         return {"success": False, "message": str(e)}
     finally:
         conn.close()
+
+
+# =========================================================================
+# MARKET MOVERS
+# =========================================================================
+
+_movers_cache: dict = {"data": None, "ts": 0.0}
+MOVERS_TTL = 600  # seconds — refresh every 10 minutes
+
+
+@app.get("/market_movers")
+async def market_movers():
+    """
+    Return today's top 5 gainers and top 5 losers from Yahoo Finance screener.
+    Result is cached for 10 minutes to avoid hammering the API.
+    """
+    now = time.time()
+    if _movers_cache["data"] and (now - _movers_cache["ts"]) < MOVERS_TTL:
+        return _movers_cache["data"]
+
+    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
+
+    def parse_quotes(resp) -> list:
+        try:
+            quotes = resp.json()["finance"]["result"][0]["quotes"]
+            return [
+                {
+                    "ticker": q.get("symbol", ""),
+                    "name": (q.get("shortName") or q.get("longName") or "")[:28],
+                    "price": round(float(q.get("regularMarketPrice", 0)), 2),
+                    "change_pct": round(float(q.get("regularMarketChangePercent", 0)), 2),
+                }
+                for q in quotes[:5]
+            ]
+        except Exception:
+            return []
+
+    async with httpx.AsyncClient(timeout=10.0, headers=headers) as client:
+        try:
+            base = "https://query1.finance.yahoo.com/v1/finance/screener/predefined/saved"
+            gr, lr = await asyncio.gather(
+                client.get(base, params={"formatted": "false", "scrIds": "day_gainers", "count": 5}),
+                client.get(base, params={"formatted": "false", "scrIds": "day_losers",  "count": 5}),
+            )
+            result = {"gainers": parse_quotes(gr), "losers": parse_quotes(lr)}
+        except Exception as e:
+            result = {"gainers": [], "losers": [], "error": str(e)}
+
+    _movers_cache["data"] = result
+    _movers_cache["ts"] = now
+    return result
 
 
 # =========================================================================
