@@ -1525,21 +1525,102 @@ async def source_add(request: Request, ticker: str = Query(...)):
 # MARKET MOVERS
 # =========================================================================
 
+_YF_HEADERS = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
+
+# ---- Market Indices ----
+
+_indices_cache: dict = {"data": None, "ts": 0.0}
+INDICES_TTL = 60  # 1 minute
+
+
+@app.get("/market_indices")
+async def market_indices():
+    """S&P 500, NASDAQ, DOW, VIX — refreshed every minute."""
+    now = time.time()
+    if _indices_cache["data"] and (now - _indices_cache["ts"]) < INDICES_TTL:
+        return _indices_cache["data"]
+
+    label_map = {"^GSPC": "S&P 500", "^IXIC": "NASDAQ", "^DJI": "DOW", "^VIX": "VIX"}
+    async with httpx.AsyncClient(timeout=10.0, headers=_YF_HEADERS) as client:
+        try:
+            r = await client.get(
+                "https://query1.finance.yahoo.com/v7/finance/quote",
+                params={"symbols": ",".join(label_map.keys())},
+            )
+            quotes = r.json()["quoteResponse"]["result"]
+            result = [
+                {
+                    "name": label_map.get(q["symbol"], q["symbol"]),
+                    "ticker": q["symbol"],
+                    "value": round(float(q.get("regularMarketPrice", 0)), 2),
+                    "change_pct": round(float(q.get("regularMarketChangePercent", 0)), 2),
+                }
+                for q in quotes
+            ]
+        except Exception:
+            result = []
+
+    _indices_cache["data"] = result
+    _indices_cache["ts"] = now
+    return result
+
+
+# ---- Market News ----
+
+_news_cache: dict = {"data": None, "ts": 0.0}
+NEWS_WIDGET_TTL = 300  # 5 minutes
+
+
+@app.get("/market_news")
+async def market_news_feed():
+    """Top financial headlines from Yahoo Finance search — refreshed every 5 minutes."""
+    now = time.time()
+    if _news_cache["data"] and (now - _news_cache["ts"]) < NEWS_WIDGET_TTL:
+        return _news_cache["data"]
+
+    async with httpx.AsyncClient(timeout=10.0, headers=_YF_HEADERS) as client:
+        try:
+            r = await client.get(
+                "https://query1.finance.yahoo.com/v1/finance/search",
+                params={"q": "stock market", "newsCount": 10, "enableEnhancedTrivialQuery": "true", "lang": "en-US"},
+            )
+            news_items = r.json().get("news", [])
+            result = []
+            for item in news_items:
+                pub = item.get("providerPublishTime", 0)
+                age = now - pub
+                if age < 3600:
+                    time_ago = f"{int(age / 60)}m ago"
+                elif age < 86400:
+                    time_ago = f"{int(age / 3600)}h ago"
+                else:
+                    time_ago = f"{int(age / 86400)}d ago"
+                result.append({
+                    "title": item.get("title", ""),
+                    "url": item.get("link", ""),
+                    "publisher": item.get("publisher", ""),
+                    "time_ago": time_ago,
+                })
+        except Exception:
+            result = []
+
+    _news_cache["data"] = result
+    _news_cache["ts"] = now
+    return result
+
+
+# ---- Market Movers ----
+
 _movers_cache: dict = {"data": None, "ts": 0.0}
-MOVERS_TTL = 600  # seconds — refresh every 10 minutes
+MOVERS_TTL = 600  # 10 minutes
 
 
 @app.get("/market_movers")
 async def market_movers():
-    """
-    Return today's top 5 gainers and top 5 losers from Yahoo Finance screener.
-    Result is cached for 10 minutes to avoid hammering the API.
-    """
+    """Top 20 gainers and losers from Yahoo Finance screener (cached 10 min)."""
     now = time.time()
     if _movers_cache["data"] and (now - _movers_cache["ts"]) < MOVERS_TTL:
         return _movers_cache["data"]
-
-    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
 
     def parse_quotes(resp) -> list:
         try:
@@ -1550,18 +1631,19 @@ async def market_movers():
                     "name": (q.get("shortName") or q.get("longName") or "")[:28],
                     "price": round(float(q.get("regularMarketPrice", 0)), 2),
                     "change_pct": round(float(q.get("regularMarketChangePercent", 0)), 2),
+                    "market_cap": q.get("marketCap"),
                 }
-                for q in quotes[:5]
+                for q in quotes[:20]
             ]
         except Exception:
             return []
 
-    async with httpx.AsyncClient(timeout=10.0, headers=headers) as client:
+    async with httpx.AsyncClient(timeout=10.0, headers=_YF_HEADERS) as client:
         try:
             base = "https://query1.finance.yahoo.com/v1/finance/screener/predefined/saved"
             gr, lr = await asyncio.gather(
-                client.get(base, params={"formatted": "false", "scrIds": "day_gainers", "count": 5}),
-                client.get(base, params={"formatted": "false", "scrIds": "day_losers",  "count": 5}),
+                client.get(base, params={"formatted": "false", "scrIds": "day_gainers", "count": 20}),
+                client.get(base, params={"formatted": "false", "scrIds": "day_losers",  "count": 20}),
             )
             result = {"gainers": parse_quotes(gr), "losers": parse_quotes(lr)}
         except Exception as e:

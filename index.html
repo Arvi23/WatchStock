@@ -137,64 +137,96 @@
     <!-- ========================================== -->
     <!-- 1. INITIAL VIEW (SEARCH SCREEN)            -->
     <!-- ========================================== -->
-    <div id="initialView" class="absolute inset-0 z-50 flex flex-col items-center justify-center transition-opacity duration-500" style="background-color: var(--bg-main);">
-        <!-- Top-right: settings + sign out -->
-        <div class="absolute top-5 right-5 flex items-center gap-2">
-            <button onclick="openSettings()" title="Settings" class="w-9 h-9 flex items-center justify-center hover:bg-[#252526] transition-colors cursor-pointer" style="background: transparent; border: 1px solid #333; color: var(--text-muted);">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><circle cx="12" cy="12" r="3"></circle></svg>
-            </button>
-            <button onclick="signOut()" title="Sign Out" class="flex items-center gap-2 px-3 py-2 hover:bg-[#252526] transition-colors cursor-pointer" style="background: transparent; border: 1px solid #333; color: var(--text-muted); font-size: 0.75rem; font-family: 'Inter', sans-serif;">
-                <span id="homeUserName" style="color: var(--accent); font-weight: 600;">User</span>
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
-            </button>
-        </div>
+    <div id="initialView" class="absolute inset-0 z-50 flex flex-col transition-opacity duration-500" style="background-color: var(--bg-main);">
 
-        <div class="mb-10 text-center">
-            <h1 class="text-4xl font-bold tracking-tight mb-3">Watch<span style="color: var(--accent)">Stock</span></h1>
-            <p class="text-lg" style="color: var(--text-muted)">AI-Powered Stock Analysis & Market Intelligence</p>
-        </div>
-
-        <div class="w-full max-w-2xl panel rounded-xl p-8 shadow-2xl relative">
-            <div class="relative w-full mb-6">
-                <input type="text" id="companyInput" placeholder="Search entity (e.g. Microsoft)..." autocomplete="off"
-                    class="w-full px-6 py-4 rounded-lg focus:outline-none text-lg transition-colors border placeholder-gray-500"
-                    style="background-color: var(--bg-main); border-color: var(--border-color); color: var(--text-main);">
-                <div id="dropdown" class="dropdown"></div>
+        <!-- TOP BAR: logo + indices + controls -->
+        <div style="display:flex; align-items:center; padding:10px 20px; border-bottom:1px solid #1e1e1e; flex-shrink:0; gap:20px; background:#161616;">
+            <div style="font-size:1.25rem; font-weight:800; letter-spacing:-0.5px; white-space:nowrap; flex-shrink:0;">
+                Watch<span style="color:var(--accent)">Stock</span>
             </div>
-            
-            <div class="relative w-full mb-8">
-                <input type="text" id="tickerInput" placeholder="Ticker (Optional)" autocomplete="off"
-                    class="w-full px-6 py-4 rounded-lg focus:outline-none text-lg transition-colors border placeholder-gray-500"
-                    style="background-color: var(--bg-main); border-color: var(--border-color); color: var(--text-main);">
+            <div id="indicesBar" style="display:flex; gap:8px; flex:1; overflow:hidden; flex-wrap:nowrap; align-items:center;">
+                <span style="font-size:0.65rem; color:#444; letter-spacing:1px;">Loading indices...</span>
             </div>
-
-            <button id="searchBtn" class="w-full py-4 rounded-lg font-bold text-white text-lg transition-colors shadow-lg flex items-center justify-center gap-2 hover:opacity-90" style="background-color: var(--accent)">
-                <span>Initialize Analysis</span>
-            </button>
+            <div style="display:flex; gap:8px; flex-shrink:0; align-items:center;">
+                <button onclick="openSettings()" title="Settings" class="w-8 h-8 flex items-center justify-center hover:bg-[#252526] transition-colors cursor-pointer" style="background:transparent; border:1px solid #333; color:var(--text-muted);">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                </button>
+                <button onclick="signOut()" title="Sign Out" class="flex items-center gap-2 px-3 py-2 hover:bg-[#252526] transition-colors cursor-pointer" style="background:transparent; border:1px solid #333; color:var(--text-muted); font-size:0.75rem; font-family:'Inter',sans-serif;">
+                    <span id="homeUserName" style="color:var(--accent); font-weight:600;">User</span>
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
+                </button>
+            </div>
         </div>
 
-        <!-- Recent History on Start Page -->
-        <div id="homeHistory" class="w-full max-w-2xl mt-6" style="display:none;">
-            <div class="section-label mb-3" style="text-align:center; font-size:0.7rem; letter-spacing:1.5px; color:var(--text-muted);">RECENT COMPANIES</div>
-            <div id="homeHistoryItems" class="flex flex-wrap gap-2 justify-center"></div>
-        </div>
+        <!-- BODY: left spacer | center | right news -->
+        <div style="display:flex; flex:1; overflow:hidden;">
 
-        <!-- Market Movers -->
-        <div id="marketMovers" class="w-full max-w-2xl mt-8" style="display:none;">
-            <div class="mb-3 flex items-center justify-center gap-3">
-                <div style="font-size:0.7rem; letter-spacing:1.5px; color:var(--text-muted);" id="moversLabel">MARKET MOVERS</div>
-                <div id="marketStatusBadge" style="display:none; font-size:0.6rem; letter-spacing:1px; color:#555; padding:2px 6px; border:1px solid #2a2a2a;">LAST SESSION</div>
-            </div>
-            <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
-                <div>
-                    <div style="font-size:0.6rem; letter-spacing:2px; color:#4caf50; margin-bottom:6px; padding-left:2px;">▲ TOP GAINERS</div>
-                    <div id="gainersList"></div>
+            <!-- Left column (reserved for future watchlist) -->
+            <div style="width:200px; flex-shrink:0; border-right:1px solid #1a1a1a;"></div>
+
+            <!-- Center column -->
+            <div style="flex:1; overflow-y:auto; padding:44px 32px 32px; display:flex; flex-direction:column; align-items:center;">
+
+                <!-- Search card -->
+                <div class="w-full" style="max-width:560px;">
+                    <div class="relative w-full mb-4">
+                        <input type="text" id="companyInput" placeholder="Search entity (e.g. Microsoft)..." autocomplete="off"
+                            class="w-full px-6 py-4 rounded-lg focus:outline-none text-lg transition-colors border placeholder-gray-500"
+                            style="background-color:var(--bg-main); border-color:var(--border-color); color:var(--text-main);">
+                        <div id="dropdown" class="dropdown"></div>
+                    </div>
+                    <div class="relative w-full mb-5">
+                        <input type="text" id="tickerInput" placeholder="Ticker (Optional)" autocomplete="off"
+                            class="w-full px-6 py-4 rounded-lg focus:outline-none text-lg transition-colors border placeholder-gray-500"
+                            style="background-color:var(--bg-main); border-color:var(--border-color); color:var(--text-main);">
+                    </div>
+                    <button id="searchBtn" class="w-full py-4 rounded-lg font-bold text-white text-lg transition-colors shadow-lg flex items-center justify-center gap-2 hover:opacity-90" style="background-color:var(--accent)">
+                        <span>Initialize Analysis</span>
+                    </button>
                 </div>
-                <div>
-                    <div style="font-size:0.6rem; letter-spacing:2px; color:#f44336; margin-bottom:6px; padding-left:2px;">▼ TOP LOSERS</div>
-                    <div id="losersList"></div>
+
+                <!-- Recent History -->
+                <div id="homeHistory" class="w-full mt-6" style="max-width:560px; display:none;">
+                    <div class="section-label mb-3" style="text-align:center; font-size:0.7rem; letter-spacing:1.5px; color:var(--text-muted);">RECENT COMPANIES</div>
+                    <div id="homeHistoryItems" class="flex flex-wrap gap-2 justify-center"></div>
+                </div>
+
+                <!-- Market Movers -->
+                <div id="marketMovers" class="w-full mt-8" style="max-width:560px; display:none;">
+                    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;">
+                        <div style="display:flex; align-items:center; gap:10px;">
+                            <span style="font-size:0.7rem; letter-spacing:1.5px; color:var(--text-muted);">MARKET MOVERS</span>
+                            <span id="marketStatusBadge" style="display:none; font-size:0.58rem; letter-spacing:1px; color:#555; padding:2px 6px; border:1px solid #2a2a2a;">LAST SESSION</span>
+                        </div>
+                        <div style="display:flex; gap:3px;">
+                            <button id="moversTabAll" onclick="setMoversTab('all')"
+                                style="font-size:0.62rem; letter-spacing:1px; padding:3px 10px; cursor:pointer; border:1px solid #333; background:var(--accent); color:#fff; transition:all 0.15s;">ALL</button>
+                            <button id="moversTabLarge" onclick="setMoversTab('large')"
+                                style="font-size:0.62rem; letter-spacing:1px; padding:3px 10px; cursor:pointer; border:1px solid #333; background:transparent; color:#666; transition:all 0.15s;">LARGE CAP</button>
+                        </div>
+                    </div>
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+                        <div>
+                            <div style="font-size:0.6rem; letter-spacing:2px; color:#4caf50; margin-bottom:6px; padding-left:2px;">▲ TOP GAINERS</div>
+                            <div id="gainersList"></div>
+                        </div>
+                        <div>
+                            <div style="font-size:0.6rem; letter-spacing:2px; color:#f44336; margin-bottom:6px; padding-left:2px;">▼ TOP LOSERS</div>
+                            <div id="losersList"></div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Right column: news -->
+            <div style="width:290px; flex-shrink:0; border-left:1px solid #1a1a1a; overflow-y:auto; padding:20px 18px; display:flex; flex-direction:column;">
+                <div style="font-size:0.62rem; letter-spacing:2px; color:var(--text-muted); margin-bottom:14px; padding-bottom:8px; border-bottom:1px solid #1e1e1e; flex-shrink:0;">MARKET NEWS</div>
+                <div id="newsList">
+                    <div style="font-size:0.7rem; color:#444; margin-top:12px;">Loading...</div>
                 </div>
             </div>
+
         </div>
     </div>
 
@@ -559,34 +591,95 @@
         window.location.href = '/';
     }
 
+    // ---- Market Indices ----
+    async function loadIndices() {
+        try {
+            const res  = await fetch('/market_indices');
+            const data = await res.json();
+            if (!data.length) return;
+            document.getElementById('indicesBar').innerHTML = data.map(idx => {
+                const pos   = idx.change_pct >= 0;
+                const color = idx.name === 'VIX' ? '#888' : (pos ? '#4caf50' : '#f44336');
+                const arrow = idx.name === 'VIX' ? '' : (pos ? '▲ ' : '▼ ');
+                const val   = idx.value >= 1000 ? idx.value.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2}) : idx.value.toFixed(2);
+                return `<div style="display:flex; align-items:center; gap:7px; padding:4px 10px; background:#1a1a1a; border:1px solid #222; white-space:nowrap;">
+                    <span style="font-size:0.62rem; color:#666; letter-spacing:1px;">${idx.name}</span>
+                    <span style="font-size:0.72rem; font-weight:600; color:#ccc; font-family:monospace;">${val}</span>
+                    <span style="font-size:0.65rem; font-weight:700; color:${color}; font-family:monospace;">${arrow}${idx.change_pct >= 0 ? '+' : ''}${idx.change_pct}%</span>
+                </div>`;
+            }).join('');
+        } catch(e) {
+            document.getElementById('indicesBar').innerHTML = '';
+        }
+    }
+
+    // ---- Market News ----
+    async function loadMarketNews() {
+        try {
+            const res  = await fetch('/market_news');
+            const data = await res.json();
+            if (!data.length) { document.getElementById('newsList').innerHTML = '<div style="font-size:0.7rem;color:#444;">No news available.</div>'; return; }
+            document.getElementById('newsList').innerHTML = data.map(n => `
+                <a href="${n.url}" target="_blank" rel="noopener noreferrer"
+                   style="display:block; margin-bottom:14px; text-decoration:none; padding-bottom:14px; border-bottom:1px solid #1a1a1a;"
+                   onmouseover="this.style.opacity='0.75'" onmouseout="this.style.opacity='1'">
+                    <div style="font-size:0.72rem; color:#ccc; line-height:1.45; margin-bottom:4px;">${n.title}</div>
+                    <div style="font-size:0.6rem; color:#555;">${n.publisher} &middot; ${n.time_ago}</div>
+                </a>`).join('');
+        } catch(e) {}
+    }
+
     // ---- Market Movers ----
+    let _moversData = null;
+    let _moversTab  = 'all';
+    const LARGE_CAP_MIN = 10_000_000_000;
+
     async function loadMarketMovers() {
         try {
             const res  = await fetch('/market_movers');
-            const data = await res.json();
-            if (!data.gainers?.length && !data.losers?.length) return;
-
-            const isWeekend = [0, 6].includes(new Date().getDay());
-            if (isWeekend) document.getElementById('marketStatusBadge').style.display = 'inline';
-
-            const renderList = (items, containerId, positive) => {
-                const color = positive ? '#4caf50' : '#f44336';
-                document.getElementById(containerId).innerHTML = items.map(item => `
-                    <div onclick="quickSearch('${item.name.replace(/'/g,"\\'")}','${item.ticker}')"
-                         style="cursor:pointer; padding:7px 10px; background:#141414; border:1px solid #222; margin-bottom:3px; display:flex; justify-content:space-between; align-items:center; transition:background 0.15s;"
-                         onmouseover="this.style.background='#1c1c1c'" onmouseout="this.style.background='#141414'">
-                        <div style="min-width:0; overflow:hidden;">
-                            <span style="font-size:0.72rem; font-weight:700; color:#e0e0e0; font-family:monospace;">${item.ticker}</span>
-                            <span style="font-size:0.6rem; color:#555; margin-left:6px;">${item.name}</span>
-                        </div>
-                        <span style="font-size:0.75rem; font-weight:700; color:${color}; white-space:nowrap; margin-left:8px; font-family:monospace;">${item.change_pct >= 0 ? '+' : ''}${item.change_pct}%</span>
-                    </div>`).join('');
-            };
-
-            renderList(data.gainers, 'gainersList', true);
-            renderList(data.losers,  'losersList',  false);
+            _moversData = await res.json();
+            if (!_moversData.gainers?.length && !_moversData.losers?.length) return;
+            if ([0, 6].includes(new Date().getDay())) document.getElementById('marketStatusBadge').style.display = 'inline';
+            renderMovers();
             document.getElementById('marketMovers').style.display = 'block';
         } catch(e) {}
+    }
+
+    function setMoversTab(tab) {
+        _moversTab = tab;
+        document.getElementById('moversTabAll').style.background   = tab === 'all'   ? 'var(--accent)' : 'transparent';
+        document.getElementById('moversTabAll').style.color        = tab === 'all'   ? '#fff' : '#666';
+        document.getElementById('moversTabLarge').style.background = tab === 'large' ? 'var(--accent)' : 'transparent';
+        document.getElementById('moversTabLarge').style.color      = tab === 'large' ? '#fff' : '#666';
+        renderMovers();
+    }
+
+    function renderMovers() {
+        if (!_moversData) return;
+        let gainers = _moversData.gainers || [];
+        let losers  = _moversData.losers  || [];
+        if (_moversTab === 'large') {
+            gainers = gainers.filter(x => x.market_cap && x.market_cap >= LARGE_CAP_MIN);
+            losers  = losers.filter(x  => x.market_cap && x.market_cap >= LARGE_CAP_MIN);
+        }
+        renderMoversList(gainers.slice(0,5), 'gainersList', true);
+        renderMoversList(losers.slice(0,5),  'losersList',  false);
+    }
+
+    function renderMoversList(items, containerId, positive) {
+        const color = positive ? '#4caf50' : '#f44336';
+        document.getElementById(containerId).innerHTML = items.length
+            ? items.map(item => `
+                <div onclick="quickSearch('${item.name.replace(/'/g,"\\'")}','${item.ticker}')"
+                     style="cursor:pointer; padding:7px 10px; background:#141414; border:1px solid #222; margin-bottom:3px; display:flex; justify-content:space-between; align-items:center; transition:background 0.15s;"
+                     onmouseover="this.style.background='#1c1c1c'" onmouseout="this.style.background='#141414'">
+                    <div style="min-width:0; overflow:hidden;">
+                        <span style="font-size:0.72rem; font-weight:700; color:#e0e0e0; font-family:monospace;">${item.ticker}</span>
+                        <span style="font-size:0.6rem; color:#555; margin-left:6px;">${item.name}</span>
+                    </div>
+                    <span style="font-size:0.75rem; font-weight:700; color:${color}; white-space:nowrap; margin-left:8px; font-family:monospace;">${item.change_pct >= 0 ? '+' : ''}${item.change_pct}%</span>
+                </div>`).join('')
+            : `<div style="font-size:0.68rem; color:#444; padding:8px 4px;">No ${positive ? 'gainers' : 'losers'} match this filter.</div>`;
     }
 
     function quickSearch(company, ticker) {
@@ -698,7 +791,9 @@
     let searchHistory = [];
     loadUserSession();
     loadUserHistory();
+    loadIndices();
     loadMarketMovers();
+    loadMarketNews();
 
     // --- Score Explanation Modal ---
     function showScoreExplanation(type) {
