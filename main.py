@@ -90,6 +90,10 @@ def init_db():
             content TEXT,
             summary TEXT
         );
+        CREATE TABLE IF NOT EXISTS settings (
+            key TEXT PRIMARY KEY,
+            value TEXT
+        );
     """)
     conn.commit()
     conn.close()
@@ -102,6 +106,18 @@ def get_db():
     conn = sqlite3.connect(DB_PATH, check_same_thread=False)
     conn.row_factory = sqlite3.Row
     return conn
+
+
+def get_setting(key: str, default: str = "") -> str:
+    """Read a value from the settings table, falling back to the provided default."""
+    conn = get_db()
+    try:
+        row = conn.execute("SELECT value FROM settings WHERE key = ?", (key,)).fetchone()
+        return row["value"] if row and row["value"] else default
+    except Exception:
+        return default
+    finally:
+        conn.close()
 
 
 # =========================================================================
@@ -136,8 +152,9 @@ async def fetch_news(company_name: str, officers: list, dynamic_threshold: float
     sentence-transformer model and compared to the reference risk embedding
     via cosine similarity. Only articles above the dynamic_threshold are kept.
     """
-    if not NEWS_API_KEY:
-        return {"error": "NEWS_API_KEY is not set in environment variables."}
+    news_key = get_setting("news_api_key", NEWS_API_KEY)
+    if not news_key:
+        return {"error": "News API key is not configured. Add it in Settings."}
 
     query_parts = [f'"{company_name}"']
     for off in officers or []:
@@ -152,7 +169,7 @@ async def fetch_news(company_name: str, officers: list, dynamic_threshold: float
         "language": "en",
         "sortBy": "publishedAt",
         "pageSize": 100,
-        "apiKey": NEWS_API_KEY,
+        "apiKey": news_key,
     }
 
     async with httpx.AsyncClient() as client:
@@ -857,10 +874,11 @@ async def _run_ai_analysis(data: dict):
     Returns structured JSON with executive_summary, recommended_action,
     financial_deep_dive, news_impact_analysis, risk_scenarios, dynamic_ui_config.
     """
-    openrouter_api_key = OPENROUTER_API_KEY
+    api_key = get_setting("llm_api_key", OPENROUTER_API_KEY)
+    llm_model = get_setting("llm_model", "openai/gpt-4o-mini")
     url = "https://openrouter.ai/api/v1/chat/completions"
     headers = {
-        "Authorization": f"Bearer {openrouter_api_key}",
+        "Authorization": f"Bearer {api_key}",
         "HTTP-Referer": "http://localhost:8000",
         "Content-Type": "application/json",
     }
@@ -897,7 +915,7 @@ async def _run_ai_analysis(data: dict):
     )
 
     payload = {
-        "model": "openai/gpt-4o-mini",
+        "model": llm_model,
         "response_format": {"type": "json_object"},
         "messages": [
             {"role": "system", "content": system_prompt},
@@ -1072,9 +1090,11 @@ async def force_update_supplier(request: Request):
     old_data = cache_get(ticker)
     fresh_data = await _fetch_live_supplier_data(company_name, ticker)
 
+    api_key = get_setting("llm_api_key", OPENROUTER_API_KEY)
+    llm_model = get_setting("llm_model", "openai/gpt-4o-mini")
     url = "https://openrouter.ai/api/v1/chat/completions"
     headers = {
-        "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+        "Authorization": f"Bearer {api_key}",
         "HTTP-Referer": "http://localhost:8000",
         "Content-Type": "application/json",
     }
@@ -1110,7 +1130,7 @@ async def force_update_supplier(request: Request):
         user_content = json.dumps(fresh_data, default=str)
 
     payload = {
-        "model": "openai/gpt-4o-mini",
+        "model": llm_model,
         "response_format": {"type": "json_object"},
         "messages": [
             {"role": "system", "content": system_prompt},
@@ -1169,9 +1189,11 @@ async def chat_ai(request: Request):
     if not user_question:
         return {"error": "No question provided."}
 
+    api_key = get_setting("llm_api_key", OPENROUTER_API_KEY)
+    llm_model = get_setting("llm_model", "openai/gpt-4o-mini")
     url = "https://openrouter.ai/api/v1/chat/completions"
     headers = {
-        "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+        "Authorization": f"Bearer {api_key}",
         "HTTP-Referer": "http://localhost:8000",
         "Content-Type": "application/json",
     }
@@ -1214,7 +1236,7 @@ async def chat_ai(request: Request):
     messages.append({"role": "user", "content": user_question})
 
     payload = {
-        "model": "openai/gpt-4o-mini",
+        "model": llm_model,
         "response_format": {"type": "json_object"},
         "messages": messages,
     }
@@ -1238,6 +1260,55 @@ async def chat_ai(request: Request):
                 return {"reply_text": content_str, "ui_action": None}
         except Exception as e:
             return {"error": f"LLM API error: {str(e)}"}
+
+
+# =========================================================================
+# SETTINGS ENDPOINTS
+# =========================================================================
+
+
+@app.get("/settings")
+async def settings_get():
+    """Return current settings. API key values are masked if set."""
+    conn = get_db()
+    try:
+        rows = conn.execute("SELECT key, value FROM settings").fetchall()
+        data = {row["key"]: row["value"] for row in rows}
+        return {
+            "llm_api_key": "***" if data.get("llm_api_key") else "",
+            "llm_api_key_set": bool(data.get("llm_api_key")),
+            "llm_model": data.get("llm_model") or "openai/gpt-4o-mini",
+            "news_api_key": "***" if data.get("news_api_key") else "",
+            "news_api_key_set": bool(data.get("news_api_key")),
+        }
+    except Exception as e:
+        return {"error": str(e)}
+    finally:
+        conn.close()
+
+
+@app.post("/settings")
+async def settings_save(request: Request):
+    """Persist settings. Ignores masked placeholder values ('***')."""
+    try:
+        body = await request.json()
+    except Exception:
+        return {"success": False, "message": "Invalid JSON"}
+    allowed = {"llm_api_key", "llm_model", "news_api_key"}
+    conn = get_db()
+    try:
+        for key, value in body.items():
+            if key in allowed and value is not None and value != "***":
+                conn.execute(
+                    "INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)",
+                    (key, str(value)),
+                )
+        conn.commit()
+        return {"success": True}
+    except Exception as e:
+        return {"success": False, "message": str(e)}
+    finally:
+        conn.close()
 
 
 # =========================================================================

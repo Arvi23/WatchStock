@@ -251,12 +251,14 @@
 
             <!-- User / Sign Out — pinned to bottom -->
             <div class="px-4 py-3 border-t border-[#333] flex items-center gap-3 flex-shrink-0">
-                <div class="w-8 h-8 bg-[#333] flex items-center justify-center text-xs font-bold border border-[#444] flex-shrink-0" id="userAvatar">?</div>
-                <div class="flex-1 min-w-0">
-                    <div id="userDisplayName" class="text-sm font-medium truncate">User</div>
-                    <div id="userRole" class="text-xs" style="color: var(--text-muted)">--</div>
+                <div class="flex items-center gap-3 flex-1 min-w-0 cursor-pointer hover:opacity-75 transition-opacity" onclick="openSettings()" title="Settings">
+                    <div class="w-8 h-8 bg-[#333] flex items-center justify-center text-xs font-bold border border-[#444] flex-shrink-0" id="userAvatar">?</div>
+                    <div class="min-w-0">
+                        <div id="userDisplayName" class="text-sm font-medium truncate">User</div>
+                        <div id="userRole" class="text-xs" style="color: var(--text-muted)">--</div>
+                    </div>
                 </div>
-                <button onclick="signOut()" title="Sign Out" class="w-8 h-8 flex items-center justify-center hover:bg-[#333] transition-colors cursor-pointer" style="background: transparent; border: 1px solid #444; color: var(--text-muted);">
+                <button onclick="signOut()" title="Sign Out" class="w-8 h-8 flex items-center justify-center hover:bg-[#333] transition-colors cursor-pointer flex-shrink-0" style="background: transparent; border: 1px solid #444; color: var(--text-muted);">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
                 </button>
             </div>
@@ -414,6 +416,53 @@
         </div>
     </div>
 
+    <!-- Settings Modal -->
+    <div id="settingsModal" style="display:none; position:fixed; inset:0; z-index:2000; background:rgba(0,0,0,0.75); backdrop-filter:blur(4px); align-items:center; justify-content:center;">
+        <div style="background:#1a1a1a; border:1px solid #333; width:480px; max-width:92vw;">
+            <div style="padding:16px 20px; border-bottom:1px solid #333; display:flex; justify-content:space-between; align-items:center;">
+                <h3 style="font-size:0.75rem; font-weight:700; color:#fff; letter-spacing:2px; margin:0; text-transform:uppercase;">Settings</h3>
+                <button onclick="closeSettings()" style="color:#666; font-size:1.1rem; background:none; border:none; cursor:pointer; padding:4px; line-height:1;">✕</button>
+            </div>
+            <div style="padding:20px 24px;">
+                <div style="font-size:0.62rem; letter-spacing:2px; text-transform:uppercase; color:var(--text-muted); margin-bottom:16px; border-bottom:1px solid #222; padding-bottom:8px;">API Keys</div>
+
+                <div style="margin-bottom:14px;">
+                    <label style="font-size:0.65rem; letter-spacing:1px; text-transform:uppercase; color:#888; display:block; margin-bottom:6px;">LLM API Key</label>
+                    <div style="display:flex; gap:6px;">
+                        <input id="settingsLlmKey" type="password" placeholder="sk-or-...  /  AIza...  /  sk-ant-..."
+                            style="flex:1; background:#111; border:1px solid #2a2a2a; color:#e0e0e0; padding:8px 10px; font-size:0.78rem; font-family:monospace; outline:none; min-width:0;">
+                        <button onclick="toggleVis('settingsLlmKey',this)" style="background:#222; border:1px solid #2a2a2a; color:#666; padding:0 10px; font-size:0.65rem; letter-spacing:1px; cursor:pointer; white-space:nowrap; flex-shrink:0;">SHOW</button>
+                    </div>
+                    <div style="font-size:0.62rem; color:#555; margin-top:4px;">Works with OpenRouter, Gemini, or Anthropic keys</div>
+                </div>
+
+                <div style="margin-bottom:14px;">
+                    <label style="font-size:0.65rem; letter-spacing:1px; text-transform:uppercase; color:#888; display:block; margin-bottom:6px;">Model</label>
+                    <input id="settingsLlmModel" type="text" placeholder="openai/gpt-4o-mini"
+                        style="width:100%; background:#111; border:1px solid #2a2a2a; color:#e0e0e0; padding:8px 10px; font-size:0.78rem; font-family:monospace; outline:none; box-sizing:border-box;">
+                    <div style="font-size:0.62rem; color:#555; margin-top:4px;">e.g. &nbsp;openai/gpt-4o-mini &nbsp;·&nbsp; google/gemini-2.0-flash-001 &nbsp;·&nbsp; anthropic/claude-haiku-4-5</div>
+                </div>
+
+                <div style="margin-bottom:24px;">
+                    <label style="font-size:0.65rem; letter-spacing:1px; text-transform:uppercase; color:#888; display:block; margin-bottom:6px;">News API Key <span style="color:#444; text-transform:none; letter-spacing:0;">(optional)</span></label>
+                    <div style="display:flex; gap:6px;">
+                        <input id="settingsNewsKey" type="password" placeholder="Get a free key at newsapi.org"
+                            style="flex:1; background:#111; border:1px solid #2a2a2a; color:#e0e0e0; padding:8px 10px; font-size:0.78rem; font-family:monospace; outline:none; min-width:0;">
+                        <button onclick="toggleVis('settingsNewsKey',this)" style="background:#222; border:1px solid #2a2a2a; color:#666; padding:0 10px; font-size:0.65rem; letter-spacing:1px; cursor:pointer; white-space:nowrap; flex-shrink:0;">SHOW</button>
+                    </div>
+                </div>
+
+                <div style="display:flex; justify-content:flex-end; gap:10px;">
+                    <button onclick="closeSettings()" style="background:transparent; border:1px solid #333; color:#666; padding:8px 18px; font-size:0.7rem; letter-spacing:1px; cursor:pointer;">CANCEL</button>
+                    <button onclick="saveSettings()" style="background:var(--accent); border:none; color:#fff; padding:8px 20px; font-size:0.7rem; font-weight:700; letter-spacing:1px; cursor:pointer;">SAVE</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast notification -->
+    <div id="toastMsg" style="display:none; position:fixed; bottom:24px; left:50%; transform:translateX(-50%); background:#1e1e1e; border:1px solid #444; color:#ccc; padding:10px 20px; font-size:0.75rem; letter-spacing:1px; z-index:3000; pointer-events:none;"></div>
+
     <!-- Score Explanation Modal -->
     <div id="scoreModal" style="display:none; position:fixed; inset:0; z-index:2000; background:rgba(0,0,0,0.7); backdrop-filter:blur(4px); align-items:center; justify-content:center;">
         <div style="background:#1e1e1e; border:1px solid #333; width:100%; max-width:480px; max-height:80vh; overflow-y:auto; position:relative;">
@@ -485,6 +534,58 @@
         saveUserHistory();
         sessionStorage.removeItem('user');
         window.location.href = '/';
+    }
+
+    // ---- Settings modal ----
+    async function openSettings() {
+        document.getElementById('settingsModal').style.display = 'flex';
+        try {
+            const res = await fetch('/settings');
+            const data = await res.json();
+            document.getElementById('settingsLlmKey').value = data.llm_api_key_set ? '***' : '';
+            document.getElementById('settingsLlmModel').value = data.llm_model || 'openai/gpt-4o-mini';
+            document.getElementById('settingsNewsKey').value = data.news_api_key_set ? '***' : '';
+        } catch(e) {}
+    }
+
+    function closeSettings() {
+        document.getElementById('settingsModal').style.display = 'none';
+    }
+
+    function toggleVis(inputId, btn) {
+        const el = document.getElementById(inputId);
+        const showing = el.type === 'text';
+        el.type = showing ? 'password' : 'text';
+        btn.textContent = showing ? 'SHOW' : 'HIDE';
+    }
+
+    async function saveSettings() {
+        const llmKey   = document.getElementById('settingsLlmKey').value.trim();
+        const llmModel = document.getElementById('settingsLlmModel').value.trim();
+        const newsKey  = document.getElementById('settingsNewsKey').value.trim();
+        const payload  = {};
+        if (llmKey   && llmKey   !== '***') payload.llm_api_key  = llmKey;
+        if (llmModel && llmModel !== '***') payload.llm_model    = llmModel;
+        if (newsKey  && newsKey  !== '***') payload.news_api_key = newsKey;
+        try {
+            const res  = await fetch('/settings', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+            const data = await res.json();
+            if (data.success) { closeSettings(); showToast('Settings saved.'); }
+            else showToast('Error: ' + (data.message || 'unknown'));
+        } catch(e) { showToast('Could not save settings.'); }
+    }
+
+    document.getElementById('settingsModal').addEventListener('click', function(e) {
+        if (e.target === this) closeSettings();
+    });
+
+    // ---- Toast ----
+    function showToast(msg, duration = 2500) {
+        const el = document.getElementById('toastMsg');
+        el.textContent = msg;
+        el.style.display = 'block';
+        clearTimeout(el._t);
+        el._t = setTimeout(() => { el.style.display = 'none'; }, duration);
     }
 
     function getUserHistoryKey() {
