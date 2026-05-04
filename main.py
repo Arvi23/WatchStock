@@ -96,6 +96,14 @@ def init_db():
             key TEXT PRIMARY KEY,
             value TEXT
         );
+        CREATE TABLE IF NOT EXISTS watchlist (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT NOT NULL,
+            ticker TEXT NOT NULL,
+            company_name TEXT,
+            added_at TEXT,
+            UNIQUE(username, ticker)
+        );
     """)
     conn.commit()
     conn.close()
@@ -1262,6 +1270,92 @@ async def chat_ai(request: Request):
                 return {"reply_text": content_str, "ui_action": None}
         except Exception as e:
             return {"error": f"LLM API error: {str(e)}"}
+
+
+# =========================================================================
+# WATCHLIST ENDPOINTS
+# =========================================================================
+
+
+def _fetch_watchlist_prices(tickers: list) -> dict:
+    """Fetch latest price + daily change for a list of tickers (synchronous)."""
+    result = {}
+    for ticker in tickers:
+        try:
+            fi = yf.Ticker(ticker).fast_info
+            price = round(float(fi.last_price), 2)
+            prev  = float(fi.previous_close)
+            change_pct = round(((price - prev) / prev) * 100, 2) if prev else 0.0
+            result[ticker] = {"price": price, "change_pct": change_pct}
+        except Exception:
+            pass
+    return result
+
+
+@app.get("/watchlist")
+async def watchlist_get(username: str = Query(...)):
+    conn = get_db()
+    try:
+        rows = conn.execute(
+            "SELECT ticker, company_name FROM watchlist WHERE username = ? ORDER BY added_at DESC",
+            (username,),
+        ).fetchall()
+        if not rows:
+            return []
+        items = [dict(r) for r in rows]
+        tickers = [r["ticker"] for r in items]
+        loop   = asyncio.get_event_loop()
+        prices = await loop.run_in_executor(None, _fetch_watchlist_prices, tickers)
+        for item in items:
+            p = prices.get(item["ticker"], {})
+            item["price"]      = p.get("price")
+            item["change_pct"] = p.get("change_pct")
+        return items
+    except Exception as e:
+        return []
+    finally:
+        conn.close()
+
+
+@app.post("/watchlist/add")
+async def watchlist_add(request: Request):
+    try:
+        body = await request.json()
+    except Exception:
+        return {"success": False, "message": "Invalid JSON"}
+    username     = (body.get("username") or "").strip()
+    ticker       = (body.get("ticker")   or "").upper().strip()
+    company_name = (body.get("company_name") or "").strip()
+    if not username or not ticker:
+        return {"success": False, "message": "username and ticker required"}
+    conn = get_db()
+    try:
+        conn.execute(
+            "INSERT OR IGNORE INTO watchlist (username, ticker, company_name, added_at) VALUES (?, ?, ?, ?)",
+            (username, ticker, company_name, datetime.utcnow().isoformat()),
+        )
+        conn.commit()
+        return {"success": True}
+    except Exception as e:
+        return {"success": False, "message": str(e)}
+    finally:
+        conn.close()
+
+
+@app.delete("/watchlist/remove")
+async def watchlist_remove(username: str = Query(...), ticker: str = Query(...)):
+    conn = get_db()
+    try:
+        conn.execute(
+            "DELETE FROM watchlist WHERE username = ? AND ticker = ?",
+            (username, ticker.upper()),
+        )
+        conn.commit()
+        return {"success": True}
+    except Exception as e:
+        return {"success": False, "message": str(e)}
+    finally:
+        conn.close()
 
 
 # =========================================================================
