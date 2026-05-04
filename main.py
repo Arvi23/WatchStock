@@ -1532,6 +1532,28 @@ _YF_HEADERS = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWeb
 _indices_cache: dict = {"data": None, "ts": 0.0}
 INDICES_TTL = 60  # 1 minute
 
+_INDEX_SYMBOLS = {"^GSPC": "S&P 500", "^IXIC": "NASDAQ", "^DJI": "DOW", "^VIX": "VIX"}
+
+
+def _fetch_indices_sync() -> list:
+    """Fetch index quotes synchronously via yfinance (runs in thread executor)."""
+    result = []
+    for symbol, name in _INDEX_SYMBOLS.items():
+        try:
+            fi = yf.Ticker(symbol).fast_info
+            price = float(fi.last_price)
+            prev  = float(fi.previous_close)
+            change_pct = round(((price - prev) / prev) * 100, 2) if prev else 0.0
+            result.append({
+                "name": name,
+                "ticker": symbol,
+                "value": round(price, 2),
+                "change_pct": change_pct,
+            })
+        except Exception:
+            pass
+    return result
+
 
 @app.get("/market_indices")
 async def market_indices():
@@ -1540,28 +1562,11 @@ async def market_indices():
     if _indices_cache["data"] and (now - _indices_cache["ts"]) < INDICES_TTL:
         return _indices_cache["data"]
 
-    label_map = {"^GSPC": "S&P 500", "^IXIC": "NASDAQ", "^DJI": "DOW", "^VIX": "VIX"}
-    async with httpx.AsyncClient(timeout=10.0, headers=_YF_HEADERS) as client:
-        try:
-            r = await client.get(
-                "https://query1.finance.yahoo.com/v7/finance/quote",
-                params={"symbols": ",".join(label_map.keys())},
-            )
-            quotes = r.json()["quoteResponse"]["result"]
-            result = [
-                {
-                    "name": label_map.get(q["symbol"], q["symbol"]),
-                    "ticker": q["symbol"],
-                    "value": round(float(q.get("regularMarketPrice", 0)), 2),
-                    "change_pct": round(float(q.get("regularMarketChangePercent", 0)), 2),
-                }
-                for q in quotes
-            ]
-        except Exception:
-            result = []
+    loop   = asyncio.get_event_loop()
+    result = await loop.run_in_executor(None, _fetch_indices_sync)
 
     _indices_cache["data"] = result
-    _indices_cache["ts"] = now
+    _indices_cache["ts"]   = now
     return result
 
 
@@ -1582,7 +1587,7 @@ async def market_news_feed():
         try:
             r = await client.get(
                 "https://query1.finance.yahoo.com/v1/finance/search",
-                params={"q": "stock market", "newsCount": 10, "enableEnhancedTrivialQuery": "true", "lang": "en-US"},
+                params={"q": "earnings revenue stocks Wall Street", "newsCount": 10, "enableEnhancedTrivialQuery": "true", "lang": "en-US"},
             )
             news_items = r.json().get("news", [])
             result = []

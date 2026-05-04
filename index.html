@@ -199,10 +199,10 @@
                             <span id="marketStatusBadge" style="display:none; font-size:0.58rem; letter-spacing:1px; color:#555; padding:2px 6px; border:1px solid #2a2a2a;">LAST SESSION</span>
                         </div>
                         <div style="display:flex; gap:3px;">
-                            <button id="moversTabAll" onclick="setMoversTab('all')"
-                                style="font-size:0.62rem; letter-spacing:1px; padding:3px 10px; cursor:pointer; border:1px solid #333; background:var(--accent); color:#fff; transition:all 0.15s;">ALL</button>
                             <button id="moversTabLarge" onclick="setMoversTab('large')"
-                                style="font-size:0.62rem; letter-spacing:1px; padding:3px 10px; cursor:pointer; border:1px solid #333; background:transparent; color:#666; transition:all 0.15s;">LARGE CAP</button>
+                                style="font-size:0.62rem; letter-spacing:1px; padding:3px 10px; cursor:pointer; border:1px solid #333; background:var(--accent); color:#fff; transition:all 0.15s;">LARGE CAP</button>
+                            <button id="moversTabSmall" onclick="setMoversTab('small')"
+                                style="font-size:0.62rem; letter-spacing:1px; padding:3px 10px; cursor:pointer; border:1px solid #333; background:transparent; color:#666; transition:all 0.15s;">SMALL CAP</button>
                         </div>
                     </div>
                     <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
@@ -631,8 +631,9 @@
 
     // ---- Market Movers ----
     let _moversData = null;
-    let _moversTab  = 'all';
-    const LARGE_CAP_MIN = 10_000_000_000;
+    let _moversTab  = 'large'; // default to large cap
+    const LARGE_CAP_THRESHOLD = 10_000_000_000; // >= $10B
+    const SMALL_CAP_THRESHOLD =  2_000_000_000; //  < $2B
 
     async function loadMarketMovers() {
         try {
@@ -647,10 +648,10 @@
 
     function setMoversTab(tab) {
         _moversTab = tab;
-        document.getElementById('moversTabAll').style.background   = tab === 'all'   ? 'var(--accent)' : 'transparent';
-        document.getElementById('moversTabAll').style.color        = tab === 'all'   ? '#fff' : '#666';
         document.getElementById('moversTabLarge').style.background = tab === 'large' ? 'var(--accent)' : 'transparent';
         document.getElementById('moversTabLarge').style.color      = tab === 'large' ? '#fff' : '#666';
+        document.getElementById('moversTabSmall').style.background = tab === 'small' ? 'var(--accent)' : 'transparent';
+        document.getElementById('moversTabSmall').style.color      = tab === 'small' ? '#fff' : '#666';
         renderMovers();
     }
 
@@ -659,8 +660,11 @@
         let gainers = _moversData.gainers || [];
         let losers  = _moversData.losers  || [];
         if (_moversTab === 'large') {
-            gainers = gainers.filter(x => x.market_cap && x.market_cap >= LARGE_CAP_MIN);
-            losers  = losers.filter(x  => x.market_cap && x.market_cap >= LARGE_CAP_MIN);
+            gainers = gainers.filter(x => x.market_cap && x.market_cap >= LARGE_CAP_THRESHOLD);
+            losers  = losers.filter(x  => x.market_cap && x.market_cap >= LARGE_CAP_THRESHOLD);
+        } else {
+            gainers = gainers.filter(x => !x.market_cap || x.market_cap < SMALL_CAP_THRESHOLD);
+            losers  = losers.filter(x  => !x.market_cap || x.market_cap < SMALL_CAP_THRESHOLD);
         }
         renderMoversList(gainers.slice(0,5), 'gainersList', true);
         renderMoversList(losers.slice(0,5),  'losersList',  false);
