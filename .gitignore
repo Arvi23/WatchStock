@@ -26,3 +26,6 @@ sentence_transformers/
 # Archive & Claude memory
 _archive/
 .claude/
+
+# Local database
+*.db

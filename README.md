@@ -1,144 +1,137 @@
-# Sourcing Buyer Terminal
+# WatchStock
 
-A real-time supplier risk intelligence platform built for procurement teams. Combines live financial data, NLP-scored news signals, and AI-generated analysis into a dark-themed terminal interface.
+A self-hosted stock analysis terminal. Search any publicly traded company and get live financial metrics, semantically scored news, AI-generated analysis, and an agentic chat that can control the UI — all running locally on your machine.
 
 ![Python](https://img.shields.io/badge/Python-3.10+-blue)
 ![FastAPI](https://img.shields.io/badge/FastAPI-async-green)
-![Elasticsearch](https://img.shields.io/badge/Elasticsearch-8.17-yellow)
+![SQLite](https://img.shields.io/badge/SQLite-built--in-lightblue)
 ![License](https://img.shields.io/badge/License-MIT-lightgrey)
 
-## What It Does
+---
 
-Search any publicly traded company and instantly get:
+## Features
 
-- **Financial health scores** (0-100) computed from live Yahoo Finance data
-- **Semantically scored news** — each article rated by NLP for risk relevance, not just keyword matches
-- **AI-generated due diligence reports** — 5-section analysis covering executive summary, financial deep dive, news impact, and risk scenarios
-- **Agentic chat** — ask the AI questions and it can generate charts, switch tabs, and append analysis directly into the UI
-- **Shared intelligence** — any company analyzed by one user is instantly available to all users from Elasticsearch
+- **Live financial data** — current price, market cap, P/E, debt/equity, beta, profit margins, revenue growth and more, pulled directly from Yahoo Finance
+- **Health scores (0–100)** — short-term (liquidity & shock resistance) and long-term (solvency & geopolitical) composite scores with explainable breakdowns
+- **Semantic news scoring** — articles are encoded into 384-dimensional vectors and ranked by cosine similarity against a risk reference embedding, not just keyword matches
+- **AI analysis reports** — 5-section deep-dive: executive summary, recommended action, financial analysis, news impact, and risk scenarios (optimistic / base / pessimistic)
+- **Agentic chat** — ask questions in natural language; the AI can generate charts, switch tabs, append analysis, and load different companies directly from the chat panel
+- **Market movers** — home screen shows today's top 5 gainers and losers, pulled live from Yahoo Finance screener
+- **Bring your own API key** — configure your LLM provider (OpenRouter, Gemini, Anthropic) and model from the Settings panel inside the app, no terminal required
+- **Zero external services** — SQLite for persistence, no Elasticsearch, no Docker, no Java
+
+---
 
 ## Quick Start
 
-### Prerequisites
+### 1. Prerequisites
 
-- Python 3.10+
-- [Elasticsearch 8.17](https://www.elastic.co/downloads/elasticsearch) (local install)
-- API keys: [NewsAPI](https://newsapi.org/) (free tier) and [OpenRouter](https://openrouter.ai/)
+- **Python 3.10+** — [python.org/downloads](https://www.python.org/downloads/) — check *"Add Python to PATH"* during install
 
-### Setup
+### 2. Setup (once)
 
-1. **Clone and install dependencies:**
-   ```bash
-   git clone <repo-url>
-   cd HackAthon
-   pip install -r requirements.txt
-   ```
+```
+setup.bat
+```
 
-2. **Configure environment variables** — create a `.env` file:
-   ```env
-   NEWS_API_KEY=your_newsapi_key
-   ES_URL=http://localhost:9200
-   ES_USER=elastic
-   ES_PASS=your_es_password
-   OPENROUTER_API_KEY=your_openrouter_key
-   ```
+This will:
+- Verify Python is installed
+- Create a virtual environment
+- Install all dependencies
+- Pre-download the NLP model (~90 MB, one-time)
 
-3. **Configure Elasticsearch** for local development — in `elasticsearch.yml`:
-   ```yaml
-   xpack.security.enabled: false
-   discovery.type: single-node
-   http.port: 9200
-   ```
+### 3. Launch
 
-4. **Launch everything** (Windows):
-   ```bash
-   start.bat
-   ```
-   This starts Elasticsearch, Kibana, waits for ES to be ready, then launches the FastAPI server.
+```
+start.bat
+```
 
-   **Or manually:**
-   ```bash
-   python main.py
-   ```
-   Server runs at `http://localhost:8000`
+Opens the app at `http://localhost:8000` automatically.
 
-5. **Open the app** — navigate to `http://localhost:8000`, register an account, and search for a company.
+### 4. Configure API keys
+
+Click your username in the bottom-left (or the gear icon on the home screen) to open **Settings** and enter your keys:
+
+| Key | Where to get it | Required |
+|-----|----------------|----------|
+| LLM API Key | [openrouter.ai](https://openrouter.ai) · [ai.google.dev](https://ai.google.dev) · [console.anthropic.com](https://console.anthropic.com) | Yes (for AI analysis) |
+| News API Key | [newsapi.org](https://newsapi.org) — free tier | Optional |
+
+---
 
 ## How It Works
 
-### The Search Pipeline
+### Search pipeline
 
 ```
-User searches "NVIDIA"
-     |
-     v
-Memory Cache ──HIT──> instant return
-     |
-    MISS
-     |
-     v
-Elasticsearch ──HIT──> rebuild from 3 indices (no API calls)
-     |
-    MISS
-     |
-     v
-Live Pipeline: yfinance + NewsAPI + NLP scoring + AI analysis
-     |
-     v
-Save to ES + cache --> return to user
+Search "NVIDIA"
+    │
+    ├─ Memory cache hit  ──────────────────────> instant return
+    │
+    ├─ SQLite hit  ────────────────────────────> rebuild from DB (no API calls)
+    │
+    └─ Cache miss
+           │
+           ├─ yfinance        → financial metrics
+           ├─ NewsAPI         → articles → NLP semantic scoring
+           ├─ Health scores   → calculated from metrics + news penalties
+           └─ LLM             → 5-section analysis report
+                    │
+                    └─ Save to SQLite + memory cache → return
 ```
 
-### Semantic News Scoring
+### Semantic news scoring
 
-We don't just show "news about company X". Each article is **encoded into a 384-dimensional vector** using `all-MiniLM-L6-v2` and compared via cosine similarity against a reference risk embedding. Articles below a **dynamic threshold** (stricter for mega-caps, looser for mid-caps) are filtered out.
+Each article is encoded with `sentence-transformers/all-MiniLM-L6-v2` (384-dim vectors) and compared via cosine similarity against a reference risk embedding. A dynamic threshold filters noise: stricter for mega-caps (>$100B market cap), looser for smaller companies.
 
-### Health Scores
+Score ranges:
+- `< 0.15` — filtered out
+- `0.15–0.20` — low relevance
+- `0.20–0.30` — moderate risk signal
+- `> 0.30` — high risk signal (penalises health scores)
 
-Two composite scores (0-100):
-- **Short-Term Safety:** Current Ratio, Quick Ratio, Profit Margins — penalized by high-risk news
-- **Long-Term Safety:** Debt/Equity, Beta — penalized by geopolitical risk and residual news impact
+### Health scores
 
-### Agentic AI Chat
+| Score | Components | Penalties |
+|-------|-----------|-----------|
+| Short-Term (0–100) | Current Ratio, Quick Ratio, Profit Margins | High-risk news signals (up to −30) |
+| Long-Term (0–100) | Debt/Equity, Beta | Geopolitical risk + residual news |
 
-The chat panel's LLM can control the UI through structured action objects — generating charts, switching tabs, appending analysis, and even loading different companies. All within a multi-turn conversation context.
+### Agentic chat
+
+The chat LLM receives full company context and can execute structured UI actions: `update_chart`, `append_new_chart`, `switch_tab`, `search_company`, `update_tab_content`, `highlight_risk`. Multi-turn context is maintained for up to 20 messages.
+
+---
 
 ## Project Structure
 
 ```
-HackAthon/
-  main.py                      # FastAPI backend (all endpoints, NLP, AI, ES)
-  index.html                   # Main terminal dashboard (single-page app)
-  login.html                   # Authentication page
-  start.bat                    # One-click launcher (ES + Kibana + FastAPI)
-  requirements.txt             # Python dependencies
-  TECHNICAL_DOCUMENTATION.md   # In-depth technical docs
-  .env                         # API keys (not committed)
+WatchStock/
+├── main.py                    # FastAPI backend — all endpoints, NLP, AI, DB
+├── index.html                 # Terminal dashboard (single-page app)
+├── login.html                 # Login / register page
+├── setup.bat                  # One-time setup script
+├── start.bat                  # Launch script (activates venv, opens browser)
+├── requirements.txt           # Python dependencies
+└── TECHNICAL_DOCUMENTATION.md # In-depth technical reference
 ```
+
+---
 
 ## Tech Stack
 
-| Component | Technology | Purpose |
-|-----------|-----------|---------|
-| Backend | FastAPI + uvicorn | Async Python web server |
-| Database | Elasticsearch 8.17 | Document store (4 indices) |
-| NLP | sentence-transformers | Semantic news scoring |
-| Financial Data | yfinance | Live metrics from Yahoo Finance |
-| News | NewsAPI | Article fetching (with ES fallback) |
-| AI | OpenRouter (GPT-4o-mini) | Analysis generation + agentic chat |
-| Frontend | Vanilla JS + Tailwind | Dark terminal UI |
-| Charts | Chart.js | Dynamic metric visualizations |
+| Layer | Technology |
+|-------|-----------|
+| Backend | FastAPI + uvicorn (async Python) |
+| Database | SQLite (built-in, zero config) |
+| NLP | sentence-transformers `all-MiniLM-L6-v2` |
+| Financial data | yfinance (Yahoo Finance) |
+| News | NewsAPI (optional) |
+| AI / LLM | OpenRouter · Gemini · Anthropic (bring your own key) |
+| Frontend | Vanilla JS + Tailwind CSS |
+| Charts | Chart.js |
 
-## Documentation
-
-See [TECHNICAL_DOCUMENTATION.md](TECHNICAL_DOCUMENTATION.md) for in-depth coverage of:
-- Semantic scoring algorithm and branching search
-- Dynamic thresholding by market cap
-- Health score mathematics and normalization functions
-- Elasticsearch index architecture and data flow
-- DB-first shared intelligence pattern
-- News resilience fallback chain
-- Agentic chat UI action system
-- Full API reference
+---
 
 ## License
 
