@@ -1,0 +1,7 @@
+fastapi
+uvicorn
+httpx
+yfinance
+python-dotenv
+sentence-transformers
+elasticsearch>=8,<9

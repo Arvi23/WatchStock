@@ -1,0 +1,1588 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sourcing Buyer Terminal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --bg-main: #121212;
+            --bg-panel: #1e1e1e;
+            --bg-lighter: #252526;
+            --border-color: #333333;
+            --text-main: #e0e0e0;
+            --text-muted: #a0a0a0;
+            --accent: #5e9ddc;
+        }
+
+        body { 
+            font-family: 'Inter', sans-serif; 
+            background-color: var(--bg-main);
+            color: var(--text-main);
+            margin: 0;
+            overflow: hidden; /* Total 100vh layout */
+        }
+
+        /* Scrollbar customizing for dark mode */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: var(--bg-main); }
+        ::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #555; }
+
+        /* Typography */
+        .prose { color: var(--text-main); }
+        .prose h1, .prose h2, .prose h3 { color: #fff; border-color: var(--border-color); }
+        .prose a { color: var(--accent); text-decoration: none; }
+        .prose a:hover { text-decoration: underline; }
+        .prose strong { color: #fff; }
+
+        /* Autocomplete dropdown */
+        .dropdown {
+            position: absolute; top: calc(100% + 4px); left: 0; right: 0;
+            background: var(--bg-panel); border: 1px solid var(--border-color); border-radius: 8px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+            max-height: 250px; overflow-y: auto; z-index: 50; display: none;
+        }
+        .dropdown-item { padding: 12px 16px; cursor: pointer; border-bottom: 1px solid var(--border-color); color: var(--text-main); }
+        .dropdown-item:hover { background-color: var(--bg-lighter); }
+
+        /* Base UI Elements */
+        .panel { background-color: var(--bg-panel); border: 1px solid var(--border-color); border-radius: 0; }
+        
+        .tab-btn {
+            padding: 0.6rem 1.7rem; color: var(--text-muted); font-weight: 600; cursor: pointer;
+            background: var(--bg-main); border: 1px solid var(--border-color); border-radius: 0;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+        .tab-btn:hover { color: var(--text-main); border-color: var(--accent); }
+        .tab-btn.active { color: var(--bg-main); background: var(--text-main); border-color: var(--text-main); }
+
+        .tab-content { display: none; height: 100%; overflow-y: auto; padding: 1.5rem; padding-bottom: 90px; }
+        .tab-content.active { display: block; }
+
+        .section-label { font-size: 0.7rem; letter-spacing: 1px; text-transform: uppercase; color: #888; font-weight: bold; margin-bottom: 1rem; }
+
+        /* Loader */
+        .pulse-loader {
+            animation: pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .spinner { border: 3px solid rgba(255,255,255,0.1); border-radius: 50%; border-top: 3px solid var(--accent); width: 24px; height: 24px; animation: spin 1s linear infinite; display: inline-block;}
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* Icon-only action buttons */
+        .action-icon-btn {
+            width: 36px; height: 36px; display: flex; align-items: center; justify-content: center;
+            background: transparent; border: 1px solid var(--border-color); color: var(--text-muted);
+            cursor: pointer; transition: all 0.2s; flex-shrink: 0;
+        }
+        .action-icon-btn:hover { background: var(--bg-lighter); color: var(--text-main); border-color: var(--accent); }
+
+        /* Search Overlay */
+        #searchOverlay {
+            position: fixed; inset: 0; z-index: 1000;
+            background: rgba(0,0,0,0.75); backdrop-filter: blur(6px);
+            display: flex; align-items: flex-start; justify-content: center;
+            padding-top: 20vh;
+            opacity: 0; pointer-events: none;
+            transition: opacity 0.25s ease;
+        }
+        #searchOverlay.visible {
+            opacity: 1; pointer-events: all;
+        }
+        #searchOverlay .search-box {
+            width: 100%; max-width: 560px;
+            transform: translateY(-20px);
+            transition: transform 0.25s ease;
+        }
+        #searchOverlay.visible .search-box {
+            transform: translateY(0);
+        }
+        #searchOverlay input {
+            background: var(--bg-panel); border: 1px solid var(--accent);
+            color: var(--text-main); padding: 14px 20px; width: 100%; font-size: 1rem;
+            outline: none; font-family: 'Inter', sans-serif;
+        }
+        #searchOverlay label { color: var(--text-muted); font-size: 0.7rem; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 8px; display: block; }
+    </style>
+</head>
+<body class="h-screen w-screen flex relative">
+
+    <!-- ========================================== -->
+    <!-- SEARCH OVERLAY (Global, opens via icon btn) -->
+    <!-- ========================================== -->
+    <div id="searchOverlay" onclick="closeSearchOverlay(event)">
+        <div class="search-box px-4">
+            <label>New Search</label>
+            <div style="position: relative;">
+                <input id="overlayCompanyInput" type="text" placeholder="Company name (e.g. Apple, NVIDIA)..." autocomplete="off">
+                <div id="overlayDropdown" class="dropdown" style="border-radius:0; top: calc(100% + 2px);"></div>
+            </div>
+            <div style="height:8px;"></div>
+            <input id="overlayTickerInput" type="text" placeholder="Ticker (Optional, e.g. AAPL)..." autocomplete="off" style="border-top: 1px solid var(--border-color);">
+            <div style="margin-top: 10px; display: flex; justify-content: space-between; align-items: center;">
+                <span style="color: var(--text-muted); font-size: 0.7rem;">Press <kbd style="background:#333; padding: 1px 5px; border:1px solid #555;">Enter</kbd> to search &nbsp;·&nbsp; <kbd style="background:#333; padding: 1px 5px; border:1px solid #555;">Esc</kbd> to close</span>
+                <button id="overlaySearchBtn" style="background: var(--accent); color: #fff; padding: 8px 20px; font-size: 0.75rem; font-weight: bold; letter-spacing: 1px; border: none; cursor: pointer;">SEARCH</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- 1. INITIAL VIEW (SEARCH SCREEN)            -->
+    <!-- ========================================== -->
+    <div id="initialView" class="absolute inset-0 z-50 flex flex-col items-center justify-center transition-opacity duration-500" style="background-color: var(--bg-main);">
+        <!-- Sign out on home page -->
+        <button onclick="signOut()" title="Sign Out" class="absolute top-5 right-5 flex items-center gap-2 px-3 py-2 hover:bg-[#252526] transition-colors cursor-pointer" style="background: transparent; border: 1px solid #333; color: var(--text-muted); font-size: 0.75rem; font-family: 'Inter', sans-serif;">
+            <span id="homeUserName" style="color: var(--accent); font-weight: 600;">User</span>
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
+        </button>
+
+        <div class="mb-10 text-center">
+            <h1 class="text-4xl font-bold tracking-tight mb-3">Sourcing Buyer <span style="color: var(--accent)">Terminal</span></h1>
+            <p class="text-lg" style="color: var(--text-muted)">Advanced Financial & Supply Chain Intelligence</p>
+        </div>
+
+        <div class="w-full max-w-2xl panel rounded-xl p-8 shadow-2xl relative">
+            <div class="relative w-full mb-6">
+                <input type="text" id="companyInput" placeholder="Search entity (e.g. Microsoft)..." autocomplete="off"
+                    class="w-full px-6 py-4 rounded-lg focus:outline-none text-lg transition-colors border placeholder-gray-500"
+                    style="background-color: var(--bg-main); border-color: var(--border-color); color: var(--text-main);">
+                <div id="dropdown" class="dropdown"></div>
+            </div>
+            
+            <div class="relative w-full mb-8">
+                <input type="text" id="tickerInput" placeholder="Ticker (Optional)" autocomplete="off"
+                    class="w-full px-6 py-4 rounded-lg focus:outline-none text-lg transition-colors border placeholder-gray-500"
+                    style="background-color: var(--bg-main); border-color: var(--border-color); color: var(--text-main);">
+            </div>
+
+            <button id="searchBtn" class="w-full py-4 rounded-lg font-bold text-white text-lg transition-colors shadow-lg flex items-center justify-center gap-2 hover:opacity-90" style="background-color: var(--accent)">
+                <span>Initialize Analysis</span>
+            </button>
+        </div>
+
+        <!-- Recent History on Start Page -->
+        <div id="homeHistory" class="w-full max-w-2xl mt-6" style="display:none;">
+            <div class="section-label mb-3" style="text-align:center; font-size:0.7rem; letter-spacing:1.5px; color:var(--text-muted);">RECENT COMPANIES</div>
+            <div id="homeHistoryItems" class="flex flex-wrap gap-2 justify-center"></div>
+        </div>
+    </div>
+
+
+    <!-- ========================================== -->
+    <!-- 2. DASHBOARD VIEW                          -->
+    <!-- ========================================== -->
+    <div id="dashboardView" class="w-full h-full flex hidden opacity-0 transition-opacity duration-500 overflow-hidden">
+        
+        <!-- SIDEBAR (Collapsible) -->
+        <aside id="sidebar" class="flex-shrink-0 relative transition-all duration-300 z-50 bg-[#1e1e1e] border-r border-[#333] flex flex-col" style="width: 260px; height: 100%;">
+            <!-- Toggle Button -->
+            <button onclick="toggleSidebar()" class="absolute -right-[41px] top-4 w-10 h-10 flex items-center justify-center bg-[#1e1e1e] border border-l-0 border-[#333] hover:bg-[#333] transition-colors z-40 rounded-none cursor-pointer">
+                <svg id="sidebarIcon" class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+            </button>
+
+            <!-- Sidebar Scrollable Content -->
+            <div class="w-full flex flex-col flex-1 overflow-hidden">
+                <!-- Header: Logo + Ticker + Update -->
+                <div class="px-4 py-4 border-b border-[#333] flex items-center gap-3">
+                    <div id="companyLogoBox" class="w-12 h-12 bg-[#333] flex items-center justify-center text-base font-bold overflow-hidden relative border border-[#444] flex-shrink-0" style="transition: box-shadow 0.4s;">
+                        <span id="sbLogoInitials">--</span>
+                        <img id="sbLogoImg" src="" alt="Logo" class="hidden absolute inset-0 w-full h-full object-contain bg-white">
+                    </div>
+                    <div class="flex flex-col gap-1 flex-1 min-w-0">
+                        <h2 id="sbTicker" class="text-base font-bold tracking-wider font-mono">TICKER</h2>
+                        <button id="btnForceUpdate" style="display:none; padding:3px 8px; font-size:0.6rem; font-weight:700; letter-spacing:1px; background:transparent; border:1px solid var(--accent); color:var(--accent); cursor:pointer; white-space:nowrap;" onclick="forceUpdateSupplier()">UPDATE DATA</button>
+                    </div>
+                </div>
+
+                <!-- Financial Summary -->
+                <div class="px-4 py-3 border-b border-[#333]">
+                    <div class="section-label mb-2">Financial Overview</div>
+                    <div class="flex justify-between items-baseline mb-2">
+                        <span class="text-xs" style="color: var(--text-muted)">Market Cap</span>
+                        <span id="sbMarketCap" class="text-sm font-semibold font-mono">--</span>
+                    </div>
+                    <div class="flex justify-between items-baseline mb-2">
+                        <span class="text-xs" style="color: var(--text-muted)">Stock Price</span>
+                        <span id="sbPrice" class="text-sm font-medium font-mono">--</span>
+                    </div>
+                    <div class="flex justify-between items-start">
+                        <span class="text-xs flex-shrink-0 mt-1" style="color: var(--text-muted)">CEO</span>
+                        <div id="sbCEOList" class="flex flex-col gap-0.5 text-right"></div>
+                    </div>
+                </div>
+
+                <!-- Safety Assessment -->
+                <div class="px-4 py-3 border-b border-[#333]">
+                    <div class="section-label mb-3">Safety Assessment</div>
+                    <div id="sidebarRiskScores" class="flex flex-col gap-3 hidden">
+                        <div class="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity" onclick="showScoreExplanation('short_term')">
+                            <div id="sbStCircle" class="w-10 h-10 flex flex-shrink-0 items-center justify-center text-base font-bold bg-gray-800 border-2 border-gray-600 transition-transform hover:scale-110">--</div>
+                            <div>
+                                <span class="block text-sm font-semibold">Short-Term Safety</span>
+                                <span class="text-xs" style="color: var(--text-muted)">Liquidity & Shock</span>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity" onclick="showScoreExplanation('long_term')">
+                            <div id="sbLtCircle" class="w-10 h-10 flex flex-shrink-0 items-center justify-center text-base font-bold bg-gray-800 border-2 border-gray-600 transition-transform hover:scale-110">--</div>
+                            <div>
+                                <span class="block text-sm font-semibold">Long-Term Safety</span>
+                                <span class="text-xs" style="color: var(--text-muted)">Solvency & Geo</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Navigation History (scrollable) -->
+                <div class="px-4 py-3 flex-1 overflow-y-auto min-h-0">
+                    <div class="section-label mb-2">Search History</div>
+                    <div id="navHistory" class="flex flex-col gap-1">
+                        <div class="text-xs" style="color: var(--text-muted)">No searches yet.</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- User / Sign Out — pinned to bottom -->
+            <div class="px-4 py-3 border-t border-[#333] flex items-center gap-3 flex-shrink-0">
+                <div class="w-8 h-8 bg-[#333] flex items-center justify-center text-xs font-bold border border-[#444] flex-shrink-0" id="userAvatar">?</div>
+                <div class="flex-1 min-w-0">
+                    <div id="userDisplayName" class="text-sm font-medium truncate">User</div>
+                    <div id="userRole" class="text-xs" style="color: var(--text-muted)">--</div>
+                </div>
+                <button onclick="signOut()" title="Sign Out" class="w-8 h-8 flex items-center justify-center hover:bg-[#333] transition-colors cursor-pointer" style="background: transparent; border: 1px solid #444; color: var(--text-muted);">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
+                </button>
+            </div>
+        </aside>
+
+        <!-- 3-PANE PARENT WRAPPER -->
+        <div class="flex-1 flex flex-row overflow-hidden relative bg-[#121212]">
+            
+            <!-- MAIN CONTENT AREA (Middle Column) -->
+            <main class="flex-1 flex flex-col relative h-full overflow-hidden" style="min-width: 450px;">
+                
+                <!-- Top Nav / Tabs -->
+            <header class="w-full flex-shrink-0 flex items-center border-b border-[#333] bg-[#121212]" style="position: relative; padding: 12px 16px 12px 16px; min-height: 60px;">
+                
+                <div class="tabs-group" style="position: absolute; left: 50%; transform: translateX(-50%); display: flex; gap: 10px; flex-wrap: nowrap; white-space: nowrap;">
+                    <button class="tab-btn flex-shrink-0 whitespace-nowrap" data-target="tab-finance">FINANCE</button>
+                    <button class="tab-btn active flex items-center gap-2 flex-shrink-0 whitespace-nowrap" data-target="tab-ai">
+                        <span style="color: inherit">✦</span> AI ANALYSIS
+                    </button>
+                    <button class="tab-btn flex-shrink-0 whitespace-nowrap" data-target="tab-news">NEWS</button>
+                </div>
+
+                <div class="actions-group" style="display: flex; gap: 8px; flex-wrap: nowrap; flex-shrink: 0; margin-left: auto;">
+                    <!-- Home Icon -->
+                    <button onclick="location.reload()" title="Home" class="action-icon-btn">
+                        <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1H5a1 1 0 01-1-1V9.5z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 21V12h6v9"/></svg>
+                    </button>
+                    <!-- Search Icon -->
+                    <button id="topbarSearchBtn" title="Search" class="action-icon-btn">
+                        <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                    </button>
+                    <!-- Download JSON Icon -->
+                    <button onclick="downloadJSON()" title="Export JSON" class="action-icon-btn">
+                        <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M12 4v12m0 0l-4-4m4 4l4-4"/></svg>
+                    </button>
+                </div>
+            </header>
+
+            <!-- Center Display Area (Scrollable) -->
+            <div class="flex-1 overflow-hidden relative">
+                
+                <!-- Loading Overlay -->
+                <div id="loadingOverlay" class="absolute inset-0 z-20 flex flex-col items-center justify-center" style="background-color: var(--bg-main);">
+                    <div class="spinner mb-6 w-12 h-12 border-4"></div>
+                    <h2 class="text-2xl font-bold tracking-widest pulse-loader" style="color: var(--accent);">ANALYSIS IN PROGRESS...</h2>
+                    <p class="mt-2 text-sm" style="color: var(--text-muted)">Structuring real-time market data & parsing NLP signals</p>
+                </div>
+
+                <!-- TAB: Finance -->
+                <div id="tab-finance" class="tab-content prose w-full pb-40 px-8">
+                    <div id="tradingViewContainer" style="width:100%; height:400px; border:1px solid #333; margin-bottom:24px; background:#131722; display:none;"></div>
+                    <div id="metricCards" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(220px, 1fr)); gap:12px; margin-bottom:24px;"></div>
+                    <div id="financeContent" class="w-full"></div>
+                </div>
+
+                <!-- TAB: News -->
+                <div id="tab-news" class="tab-content prose w-full pb-40 px-8">
+                    <div id="newsContent" class="w-full"></div>
+                </div>
+
+                <!-- TAB: AI Analysis -->
+                <div id="tab-ai" class="tab-content active w-full pb-6 px-8">
+                    <div class="flex justify-between items-center mb-10 border-b border-[#333] pb-6">
+                        <div>
+                            <h2 class="text-2xl font-bold tracking-tight text-white">Generative AI Insights</h2>
+                            <p class="text-sm mt-1" style="color: var(--text-muted)">Evaluated natively by OpenRouter LLM</p>
+                        </div>
+                        <button id="btnAiAnalyze" class="px-5 py-2.5 text-sm font-bold rounded-none transiton-colors hover:bg-opacity-80 flex items-center gap-2" style="background-color: transparent; border: 1px solid var(--accent); color: var(--accent);">
+                            <span>Request Synthesis</span>
+                        </button>
+                    </div>
+
+                    <div id="aiLoading" class="hidden flex flex-col items-center justify-center py-10 opacity-0 transition-opacity">
+                        <div class="w-full max-w-sm border border-[#333] p-1 bg-[#1a1a1a]">
+                            <div class="h-1 w-0" id="aiProgressBar" style="background-color: var(--accent); transition: width 0.2s"></div>
+                        </div>
+                        <p class="mt-4 text-[0.65rem] tracking-widest uppercase font-mono" style="color: var(--text-muted)">Interrogating LLM Pipeline...</p>
+                    </div>
+
+                    <div id="aiAnalysisResult" class="hidden flex flex-col gap-10">
+                        <div class="pl-4 border-l-[3px]" style="border-left-color: var(--accent);">
+                            <h4 class="text-xs font-bold uppercase tracking-widest mb-3" style="color: var(--accent)">Executive Summary</h4>
+                            <p id="aiSummary" class="leading-relaxed text-[#e0e0e0] text-lg font-light"></p>
+                        </div>
+                        <div class="pl-4 border-l-[3px]" style="border-left-color: var(--accent);">
+                            <h4 class="text-xs font-bold uppercase tracking-widest mb-3" style="color: var(--accent)">Model Recommendation</h4>
+                            <p id="aiAction" class="leading-relaxed font-semibold text-white"></p>
+                        </div>
+                        <div id="financialDeepDiveSection" class="pl-4 border-l-[3px] hidden" style="border-left-color: #69db7c;">
+                            <h4 class="text-xs font-bold uppercase tracking-widest mb-3" style="color: #69db7c">Financial Deep Dive</h4>
+                            <div id="financialDeepDiveContent" class="leading-relaxed text-[#e0e0e0] text-sm prose"></div>
+                        </div>
+                        <div id="newsImpactSection" class="pl-4 border-l-[3px] hidden" style="border-left-color: #ff6b6b;">
+                            <h4 class="text-xs font-bold uppercase tracking-widest mb-3" style="color: #ff6b6b">News Impact Analysis</h4>
+                            <div id="newsImpactContent" class="leading-relaxed text-[#e0e0e0] text-sm prose"></div>
+                        </div>
+                        <div id="riskScenariosSection" class="pl-4 border-l-[3px] hidden" style="border-left-color: #ffa94d;">
+                            <h4 class="text-xs font-bold uppercase tracking-widest mb-3" style="color: #ffa94d">Risk Scenarios</h4>
+                            <div id="riskScenariosContent" class="leading-relaxed text-[#e0e0e0] text-sm prose"></div>
+                        </div>
+                        <div class="pl-4 border-l-[3px]" style="border-left-color: var(--accent);">
+                            <h4 class="text-xs font-bold uppercase tracking-widest mb-4" style="color: var(--accent)">Dynamic Metric Plot</h4>
+                            <div style="width: 100%; max-height: 280px; margin-top: 10px;">
+                                <canvas id="dynamicChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Bottom Chat Bar (ASK) -->
+            <div id="oldChatBar" class="w-full flex-shrink-0 p-4 border-t border-[#333] flex items-center justify-center bg-[#121212] z-30">
+                <div class="w-full relative flex items-center px-4">
+                    <input id="oldChatInput" type="text" placeholder="Ask Terminal (e.g. Explain the short-term risk factors)..." 
+                           class="w-full px-6 py-4 rounded-none border border-[#333] focus:outline-none focus:border-[#5e9ddc] transition-colors shadow-sm font-mono"
+                           style="background-color: #1a1a1a; color: var(--text-main);">
+                    <button id="oldChatSendBtn" class="absolute right-6 w-10 h-10 rounded-none flex items-center justify-center transition-colors hover:bg-opacity-80" style="background-color: var(--accent); color: white;">
+                        <svg class="w-4 h-4 transform rotate-90" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>
+                    </button>
+                </div>
+            </div>
+
+            </main>
+
+            <!-- RESIZABLE DRAG HANDLE -->
+            <div id="chatResizer" class="w-1 cursor-col-resize bg-transparent border-l border-[#333] transition-colors duration-200 hover:bg-[#555] z-40 hidden"></div>
+
+            <!-- RIGHT CHAT PANEL -->
+            <aside id="rightChatPanel" style="width: 350px; min-width: 250px; max-width: 800px; display: none;" class="flex-col bg-[#121212] h-full flex-shrink-0 relative shadow-2xl">
+                <!-- Chat Header -->
+                <div class="border-b border-[#333] font-bold text-xs tracking-widest text-[#e0e0e0]" style="display: flex; justify-content: space-between; align-items: center; padding: 15px 20px 15px 20px;">
+                    <span>AI TERMINAL CHAT</span>
+                    <button id="closeRightChatBtn" class="hover:text-red-500 transition-colors text-lg" style="line-height: 1;">✕</button>
+                </div>
+                
+                <!-- Chat History -->
+                <div id="chatHistory" class="flex-1 overflow-y-auto p-4 flex flex-col gap-4">
+                    <div class="text-xs text-[#a0a0a0] text-center mb-2">Initialize query sequence...</div>
+                </div>
+                
+                <!-- New Right Chat Input Bar -->
+                <div class="p-4 border-t border-[#333] bg-[#1a1a1a] flex-shrink-0">
+                    <div class="relative flex items-center">
+                        <input id="rightChatInput" type="text" placeholder="Terminal input..." 
+                               class="w-full px-4 py-3 text-sm rounded-none border border-[#333] focus:outline-none focus:border-[#5e9ddc] transition-colors font-mono"
+                               style="background-color: #121212; color: var(--text-main);">
+                        <button id="rightChatSendBtn" class="absolute right-2 w-8 h-8 flex items-center justify-center transition-colors hover:text-white" style="color: var(--accent);">
+                            <svg class="w-4 h-4 transform rotate-90" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>
+                        </button>
+                    </div>
+                </div>
+            </aside>
+            
+        </div>
+    </div>
+
+    <!-- Score Explanation Modal -->
+    <div id="scoreModal" style="display:none; position:fixed; inset:0; z-index:2000; background:rgba(0,0,0,0.7); backdrop-filter:blur(4px); align-items:center; justify-content:center;">
+        <div style="background:#1e1e1e; border:1px solid #333; width:100%; max-width:480px; max-height:80vh; overflow-y:auto; position:relative;">
+            <div style="padding:20px 24px; border-bottom:1px solid #333; display:flex; justify-content:space-between; align-items:center;">
+                <h3 id="scoreModalTitle" style="font-size:1rem; font-weight:700; color:#fff; letter-spacing:1px; margin:0;">Score Breakdown</h3>
+                <button onclick="closeScoreModal()" style="color:#888; font-size:1.2rem; background:none; border:none; cursor:pointer; line-height:1; padding:4px;">✕</button>
+            </div>
+            <div id="scoreModalBody" style="padding:20px 24px;"></div>
+        </div>
+    </div>
+
+<script>
+    // Constants & State
+    const companyInput = document.getElementById('companyInput');
+    const tickerInput = document.getElementById('tickerInput');
+    const dropdown = document.getElementById('dropdown');
+    const searchBtn = document.getElementById('searchBtn');
+    
+    // View containers
+    const initialView = document.getElementById('initialView');
+    const dashboardView = document.getElementById('dashboardView');
+    const loadingOverlay = document.getElementById('loadingOverlay');
+    
+    // Sidebar
+    const sidebar = document.getElementById('sidebar');
+    const sidebarIcon = document.getElementById('sidebarIcon');
+    const sbLogoInitials = document.getElementById('sbLogoInitials');
+    const sbTicker = document.getElementById('sbTicker');
+    const sbCompanyName = document.getElementById('sbCompanyName');
+    const sbMarketCap = document.getElementById('sbMarketCap');
+    const sbPrice = document.getElementById('sbPrice');
+    const sbCEOList = document.getElementById('sbCEOList');
+    const sidebarRiskScores = document.getElementById('sidebarRiskScores');
+    const sbStCircle = document.getElementById('sbStCircle');
+    const sbLtCircle = document.getElementById('sbLtCircle');
+
+    // Main Content
+    const financeContent = document.getElementById('financeContent');
+    const newsContent = document.getElementById('newsContent');
+    
+    // AI
+    const btnAiAnalyze = document.getElementById('btnAiAnalyze');
+    const aiAnalysisResult = document.getElementById('aiAnalysisResult');
+    const aiSummary = document.getElementById('aiSummary');
+    const aiAction = document.getElementById('aiAction');
+
+    let currentRawData = null;
+    let dynamicChartInstance = null;
+
+    // --- USER SESSION ---
+    let currentUser = null;
+
+    function loadUserSession() {
+        const raw = sessionStorage.getItem('user');
+        if (!raw) { window.location.href = '/'; return; }
+        try {
+            currentUser = JSON.parse(raw);
+            const name = currentUser.full_name || currentUser.username;
+            document.getElementById('userDisplayName').textContent = name;
+            document.getElementById('userRole').textContent = currentUser.role || 'user';
+            document.getElementById('userAvatar').textContent = (name || '?').charAt(0).toUpperCase();
+            const homeEl = document.getElementById('homeUserName');
+            if (homeEl) homeEl.textContent = name;
+        } catch(e) {}
+    }
+
+    function signOut() {
+        // Save search history before leaving
+        saveUserHistory();
+        sessionStorage.removeItem('user');
+        window.location.href = '/';
+    }
+
+    function getUserHistoryKey() {
+        return currentUser ? `history_${currentUser.username}` : 'history_guest';
+    }
+
+    function loadUserHistory() {
+        try {
+            const saved = localStorage.getItem(getUserHistoryKey());
+            if (saved) {
+                searchHistory = JSON.parse(saved).map(h => ({ ...h, time: new Date(h.time) }));
+                renderNavHistory();
+                renderHomeHistory();
+            }
+        } catch(e) {}
+    }
+
+    function renderHomeHistory() {
+        const container = document.getElementById('homeHistoryItems');
+        const wrapper = document.getElementById('homeHistory');
+        if (!container || !wrapper || searchHistory.length === 0) return;
+        wrapper.style.display = '';
+        container.innerHTML = '';
+        searchHistory.slice(0, 6).forEach(h => {
+            const dotColor = getScoreDotColor(h.score);
+            const chip = document.createElement('button');
+            chip.style.cssText = `display:flex; align-items:center; gap:8px; padding:10px 16px; background:#1e1e1e; border:1px solid #333; cursor:pointer; transition:all 0.15s; color:var(--text-main); font-family:'Inter',sans-serif; font-size:0.8rem;`;
+            chip.onmouseenter = () => { chip.style.borderColor = 'var(--accent)'; chip.style.background = '#252526'; };
+            chip.onmouseleave = () => { chip.style.borderColor = '#333'; chip.style.background = '#1e1e1e'; };
+            chip.innerHTML = `
+                <span style="width:7px; height:7px; border-radius:50%; background:${dotColor}; flex-shrink:0;"></span>
+                <span style="font-weight:700; font-family:monospace; color:var(--accent); font-size:0.75rem;">${h.ticker}</span>
+                <span style="color:var(--text-muted); font-size:0.7rem; max-width:120px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${h.company}</span>
+            `;
+            chip.addEventListener('click', () => {
+                companyInput.value = h.company;
+                tickerInput.value = h.ticker;
+                executeSearch(h.company, h.ticker);
+            });
+            container.appendChild(chip);
+        });
+    }
+
+    function saveUserHistory() {
+        try {
+            localStorage.setItem(getUserHistoryKey(), JSON.stringify(searchHistory));
+        } catch(e) {}
+    }
+
+    let debounceTimer;
+    let searchHistory = [];
+    loadUserSession();
+    loadUserHistory();
+
+    // --- Score Explanation Modal ---
+    function showScoreExplanation(type) {
+        if (!currentRawData?.health_scores) return;
+        const modal = document.getElementById('scoreModal');
+        const title = document.getElementById('scoreModalTitle');
+        const body = document.getElementById('scoreModalBody');
+
+        const data = type === 'short_term' ? currentRawData.health_scores.short_term : currentRawData.health_scores.long_term;
+        const label = type === 'short_term' ? 'Short-Term Safety' : 'Long-Term Safety';
+
+        title.innerText = `${label} — ${data.score}/100`;
+
+        let html = '';
+        let runningTotal = 0;
+        data.breakdown.forEach(b => {
+            const isPositive = b.impact >= 0;
+            const color = isPositive ? '#69db7c' : '#ff6b6b';
+            const sign = isPositive ? '+' : '';
+            runningTotal += b.impact;
+            html += `<div style="display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px solid #2a2a2a;">
+                <span style="color:#e0e0e0; font-size:0.85rem;">${b.item}</span>
+                <span style="color:${color}; font-weight:700; font-family:monospace; font-size:0.9rem; white-space:nowrap; margin-left:16px;">${sign}${b.impact}</span>
+            </div>`;
+        });
+        html += `<div style="display:flex; justify-content:space-between; align-items:center; padding:12px 0; margin-top:4px; border-top:2px solid #444;">
+            <span style="color:#fff; font-weight:700; font-size:0.9rem;">Final Score</span>
+            <span style="color:hsl(${data.score * 1.2}, 100%, 50%); font-weight:700; font-family:monospace; font-size:1.1rem;">${data.score}</span>
+        </div>`;
+
+        body.innerHTML = html;
+        modal.style.display = 'flex';
+    }
+
+    function closeScoreModal() {
+        document.getElementById('scoreModal').style.display = 'none';
+    }
+
+    document.getElementById('scoreModal').addEventListener('click', function(e) {
+        if (e.target === this) closeScoreModal();
+    });
+
+    // --- Terminal Chart Color Palette (strict, LLM colors are ignored) ---
+    const TERMINAL_COLORS = ['#0078D4', '#00CC6A', '#D13438', '#FFB900', '#8A2BE2', '#00BFFF', '#FF8C00'];
+
+    function getChartColors(labels) {
+        return labels.map((label, i) => {
+            const l = (label || '').toLowerCase();
+            if (l.includes('debt') || l.includes('risk') || l.includes('loss') || l.includes('penalty')) return '#D13438';
+            if (l.includes('profit') || l.includes('cash') || l.includes('safety') || l.includes('growth') || l.includes('revenue')) return '#00CC6A';
+            return TERMINAL_COLORS[i % TERMINAL_COLORS.length];
+        });
+    }
+
+    function createChart(canvasId, cfg) {
+        const canvas = document.getElementById(canvasId);
+        if (!canvas) return null;
+        const ctx = canvas.getContext('2d');
+        Chart.defaults.color = '#a0a0a0';
+        Chart.defaults.borderColor = '#333333';
+        const labels = cfg.labels || [];
+        const colors = getChartColors(labels);
+        return new Chart(ctx, {
+            type: cfg.type || cfg.chart_type || 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: cfg.title || 'Metric',
+                    data: cfg.values || [],
+                    backgroundColor: colors.map(c => c + '66'),
+                    borderColor: colors,
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    title: { display: true, text: cfg.title || '', color: '#e0e0e0', font: { size: 14, family: 'monospace' } },
+                    legend: { labels: { font: { family: 'monospace' } } }
+                },
+                scales: {
+                    x: { ticks: { font: { family: 'monospace' } } },
+                    y: { ticks: { font: { family: 'monospace' } } }
+                }
+            }
+        });
+    }
+
+    function getExistingChartTitles() {
+        const titles = [];
+        document.querySelectorAll('canvas').forEach(c => {
+            const chart = Chart.getChart(c);
+            if (chart) {
+                const t = chart.options?.plugins?.title?.text;
+                if (t) titles.push(t);
+            }
+        });
+        return titles;
+    }
+
+    // --- Educational Metric Definitions ---
+    const METRIC_DESCRIPTIONS = {
+        currentRatio: { label: 'Current Ratio', desc: 'Measures the company\'s ability to pay short-term debts with current assets. Above 1.0 means more assets than liabilities.', format: v => v?.toFixed(2) || 'N/A' },
+        quickRatio: { label: 'Quick Ratio', desc: 'Like Current Ratio but excludes inventory — a stricter liquidity test.', format: v => v?.toFixed(2) || 'N/A' },
+        revenueGrowth: { label: 'Revenue Growth', desc: 'Year-over-year revenue change. Positive means the company is growing its top line.', format: v => v != null ? (v * 100).toFixed(1) + '%' : 'N/A' },
+        profitMargins: { label: 'Profit Margins', desc: 'Percentage of revenue kept as profit after all expenses. Higher is healthier.', format: v => v != null ? (v * 100).toFixed(1) + '%' : 'N/A' },
+        debtToEquity: { label: 'Debt to Equity', desc: 'Total debt relative to shareholder equity. Lower means less leverage risk.', format: v => v?.toFixed(2) || 'N/A' },
+        freeCashflow: { label: 'Free Cash Flow', desc: 'Cash generated after capital expenditures. Positive means the company generates surplus cash.', format: v => v != null ? '$' + (v / 1e9).toFixed(2) + 'B' : 'N/A' },
+        beta: { label: 'Beta', desc: 'Stock volatility relative to the market. Below 1.0 = defensive, above 1.5 = highly volatile.', format: v => v?.toFixed(2) || 'N/A' },
+        marketCap: { label: 'Market Cap', desc: 'Total market value of all outstanding shares. Indicates company size and market confidence.', format: v => v != null ? '$' + (v / 1e9).toFixed(2) + 'B' : 'N/A' }
+    };
+
+    // --- Navigation History ---
+    function addToNavHistory(company, ticker, safetyScore) {
+        // Add to front of array, dedupe
+        searchHistory = searchHistory.filter(h => h.ticker !== ticker);
+        searchHistory.unshift({ company, ticker, time: new Date(), score: safetyScore || null });
+        if (searchHistory.length > 10) searchHistory.pop();
+        saveUserHistory();
+        renderNavHistory();
+    }
+
+    function getScoreDotColor(score) {
+        if (score === null || score === undefined) return '#555';
+        if (score >= 65) return '#22c55e';  // green
+        if (score >= 40) return '#f59e0b';  // amber
+        return '#ef4444';                    // red
+    }
+
+    function renderNavHistory() {
+        const navHistory = document.getElementById('navHistory');
+        navHistory.innerHTML = '';
+        if (searchHistory.length === 0) {
+            navHistory.innerHTML = '<div class="text-xs" style="color: var(--text-muted)">No searches yet.</div>';
+            return;
+        }
+        searchHistory.forEach(h => {
+            const item = document.createElement('div');
+            item.style.cssText = 'display:flex; justify-content:space-between; align-items:center; padding:6px 8px; cursor:pointer; border-bottom:1px solid #2a2a2a; transition: background 0.15s;';
+            item.onmouseenter = () => item.style.background = '#252526';
+            item.onmouseleave = () => item.style.background = 'transparent';
+
+            const timeStr = new Date(h.time).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+            const dotColor = getScoreDotColor(h.score);
+            item.innerHTML = `
+                <div style="display:flex; align-items:center; gap:6px;">
+                    <span style="width:6px; height:6px; border-radius:50%; background:${dotColor}; flex-shrink:0;"></span>
+                    <span style="color:var(--accent); font-weight:700; font-size:0.7rem; font-family:monospace;">${h.ticker}</span>
+                    <span style="color:var(--text-muted); font-size:0.65rem; max-width:90px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${h.company}</span>
+                </div>
+                <span style="color:#555; font-size:0.6rem; font-family:monospace;">${timeStr}</span>
+            `;
+            item.addEventListener('click', () => {
+                companyInput.value = h.company;
+                tickerInput.value = h.ticker;
+                executeSearch(h.company, h.ticker);
+            });
+            navHistory.appendChild(item);
+        });
+    }
+
+    // --- 1. VIEWS & LAYOUT CONTROL ---
+
+    function toggleSidebar() {
+        const isCollapsed = sidebar.style.marginLeft === '-260px';
+        if (isCollapsed) {
+            sidebar.style.marginLeft = '0px';
+            sidebarIcon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>';
+        } else {
+            sidebar.style.marginLeft = '-260px';
+            sidebarIcon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>';
+        }
+    }
+
+    // Tabs logic
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            // Remove active from all
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            // Add active to current
+            btn.classList.add('active');
+            document.getElementById(btn.getAttribute('data-target')).classList.add('active');
+        });
+    });
+
+    // --- 2. AUTOCOMPLETE ---
+
+    // --- Reusable Autocomplete ---
+    function initAutocomplete(inputEl, dropdownEl, companyTarget, tickerTarget) {
+        let timer;
+        inputEl.addEventListener('input', function() {
+            const query = this.value.trim();
+            if (query.length < 3) {
+                dropdownEl.style.display = 'none';
+                clearTimeout(timer);
+                return;
+            }
+            clearTimeout(timer);
+            timer = setTimeout(async () => {
+                try {
+                    const response = await fetch(`/search_company?q=${encodeURIComponent(query)}`);
+                    if (!response.ok) throw new Error('Network Error');
+                    const data = await response.json();
+                    if (data.error) throw new Error(data.error);
+                    
+                    if (data.length === 0) {
+                        dropdownEl.innerHTML = '<div class="p-4 text-sm text-center" style="color: var(--text-muted)">No results found.</div>';
+                    } else {
+                        dropdownEl.innerHTML = '';
+                        data.forEach(item => {
+                            const div = document.createElement('div');
+                            div.className = 'dropdown-item flex justify-between items-center';
+                            div.innerHTML = `
+                                <span class="font-medium truncate max-w-[70%]">${item.name}</span>
+                                <span class="text-xs font-bold" style="color: var(--accent)">${item.ticker}</span>
+                            `;
+                            div.addEventListener('click', () => {
+                                companyTarget.value = item.name;
+                                tickerTarget.value = item.ticker;
+                                dropdownEl.style.display = 'none';
+                            });
+                            dropdownEl.appendChild(div);
+                        });
+                    }
+                    dropdownEl.style.display = 'block';
+                } catch (error) {
+                    console.error(error);
+                }
+            }, 150);
+        });
+    }
+
+    // Attach autocomplete to BOTH inputs
+    initAutocomplete(companyInput, dropdown, companyInput, tickerInput);
+    
+    const overlayDropdown = document.getElementById('overlayDropdown');
+    const overlayCompanyInputEl = document.getElementById('overlayCompanyInput');
+    const overlayTickerInputEl = document.getElementById('overlayTickerInput');
+    initAutocomplete(overlayCompanyInputEl, overlayDropdown, overlayCompanyInputEl, overlayTickerInputEl);
+
+    document.addEventListener('click', e => {
+        if (!companyInput.contains(e.target) && !dropdown.contains(e.target)) {
+            dropdown.style.display = 'none';
+        }
+        if (overlayDropdown && !overlayCompanyInputEl.contains(e.target) && !overlayDropdown.contains(e.target)) {
+            overlayDropdown.style.display = 'none';
+        }
+    });
+
+    // --- 3. MAIN SEARCH TRIGGER ---
+
+    // Core search function — callable from initial search, overlay, and chat actions
+    async function executeSearch(company, ticker) {
+        if (!company) return;
+
+        // Show dashboard if not already visible
+        const isInitial = !initialView.classList.contains('hidden');
+        if (isInitial) {
+            initialView.classList.add('opacity-0');
+            await new Promise(r => setTimeout(r, 500));
+            initialView.classList.add('hidden');
+            dashboardView.classList.remove('hidden');
+            void dashboardView.offsetWidth;
+            dashboardView.classList.remove('opacity-0');
+        }
+
+        // Show loading overlay for re-searches within dashboard
+        loadingOverlay.classList.remove('hidden');
+
+        let url = `/fetch_supplier_data?company_name=${encodeURIComponent(company)}`;
+        if (ticker) {
+            url += `&ticker=${encodeURIComponent(ticker)}`;
+        }
+
+        try {
+            const response = await fetch(url);
+            currentRawData = await response.json();
+
+            populateDashboard(currentRawData);
+            // Calculate average safety score for history dot
+            let avgScore = null;
+            if (currentRawData.health_scores && !currentRawData.health_scores.error) {
+                const st = currentRawData.health_scores.short_term?.score || 0;
+                const lt = currentRawData.health_scores.long_term?.score || 0;
+                avgScore = Math.round((st + lt) / 2);
+            }
+            addToNavHistory(company, currentRawData.ticker_used || ticker, avgScore);
+
+            // Handle source flag
+            const btnForceUpdate = document.getElementById('btnForceUpdate');
+            if (currentRawData.source === 'database') {
+                btnForceUpdate.style.display = 'inline-block';
+            } else {
+                btnForceUpdate.style.display = 'none';
+            }
+
+            // If ai_analysis came with the data (from DB or live), render it directly
+            if (currentRawData.ai_analysis && !currentRawData.ai_analysis.error) {
+                renderAiAnalysis(currentRawData.ai_analysis);
+            }
+            // No auto-trigger — user can manually request AI analysis via the button
+
+        } catch (err) {
+            console.error(err);
+            loadingOverlay.innerHTML = `<h2 class="text-red-500 font-bold text-xl">System Error</h2><p>Could not fetch data.</p>`;
+        } finally {
+            if (currentRawData) {
+                loadingOverlay.classList.add('hidden');
+            }
+        }
+    }
+
+    searchBtn.addEventListener('click', () => {
+        const company = companyInput.value.trim();
+        const ticker = tickerInput.value.trim();
+        if (!company) {
+            alert("Please enter a company name.");
+            companyInput.focus();
+            return;
+        }
+        executeSearch(company, ticker);
+    });
+
+    // --- 4. POPULATE DASHBOARD ---
+
+    function populateDashboard(data) {
+        // Destroy all existing Chart.js instances and remove appended chart wrappers
+        document.querySelectorAll('canvas').forEach(c => {
+            const chart = Chart.getChart(c);
+            if (chart) chart.destroy();
+        });
+        dynamicChartInstance = null;
+
+        // Reset logo glow
+        document.getElementById('companyLogoBox').style.boxShadow = 'none';
+
+        // Reset AI Analysis tab to its original structure (remove appended Agent Insight / chart divs)
+        const aiResult = document.getElementById('aiAnalysisResult');
+        aiResult.querySelectorAll('.mt-8').forEach(el => el.remove());
+        aiResult.classList.add('hidden');
+
+        // Reset news impact
+        document.getElementById('newsImpactSection')?.classList.add('hidden');
+        document.getElementById('financialDeepDiveSection')?.classList.add('hidden');
+        document.getElementById('riskScenariosSection')?.classList.add('hidden');
+
+        // Build Sidebar
+        sbTicker.innerText = data.ticker_used || 'N/A';
+        sbLogoInitials.innerText = (data.ticker_used || data.company_name.substring(0,2)).substring(0,2).toUpperCase();
+        
+        const sbLogoImg = document.getElementById('sbLogoImg');
+        sbLogoImg.classList.add('hidden');
+        sbLogoInitials.style.display = 'block';
+        
+        if (data.company_domain) {
+            // Try multiple logo sources with fallback chain
+            const domain = data.company_domain;
+            const logoSources = [
+                `https://img.logo.dev/${domain}?token=pk_anonymous&size=128`,
+                `https://www.google.com/s2/favicons?domain=${domain}&sz=128`,
+                `https://logo.clearbit.com/${domain}`
+            ];
+            
+            let sourceIdx = 0;
+            function tryNextLogo() {
+                if (sourceIdx >= logoSources.length) {
+                    sbLogoImg.classList.add('hidden');
+                    sbLogoInitials.style.display = 'block';
+                    return;
+                }
+                sbLogoImg.src = logoSources[sourceIdx];
+                sourceIdx++;
+            }
+            
+            sbLogoImg.onload = () => { 
+                sbLogoImg.classList.remove('hidden'); 
+                sbLogoInitials.style.display = 'none';
+            };
+            sbLogoImg.onerror = () => tryNextLogo();
+            tryNextLogo();
+        }
+
+        const metrics = data.financial_data?.metrics || {};
+        const cap = metrics.marketCap ? '$' + (metrics.marketCap/1e9).toFixed(2) + 'B' : 'N/A';
+        sbMarketCap.innerText = cap;
+        const price = metrics.currentPrice;
+        sbPrice.innerText = price != null ? '$' + parseFloat(price).toFixed(2) : 'N/A';
+
+        // --- TradingView Widget ---
+        const tvContainer = document.getElementById('tradingViewContainer');
+        tvContainer.innerHTML = '';
+        if (data.ticker_used) {
+            tvContainer.style.display = 'block';
+            const tvScript = document.createElement('script');
+            tvScript.src = 'https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js';
+            tvScript.type = 'text/javascript';
+            tvScript.async = true;
+            tvScript.innerHTML = JSON.stringify({
+                "autosize": true, "symbol": data.ticker_used, "interval": "D",
+                "timezone": "Etc/UTC", "theme": "dark", "style": "1",
+                "locale": "en", "allow_symbol_change": false,
+                "backgroundColor": "rgba(19, 23, 34, 1)",
+                "gridColor": "rgba(51, 51, 51, 0.3)",
+                "hide_top_toolbar": false, "hide_legend": true,
+                "save_image": false, "height": "100%", "width": "100%"
+            });
+            tvContainer.appendChild(tvScript);
+        } else {
+            tvContainer.style.display = 'none';
+        }
+
+        // --- Educational Metric Cards ---
+        const metricCards = document.getElementById('metricCards');
+        metricCards.innerHTML = '';
+        const cardKeys = ['currentRatio', 'quickRatio', 'revenueGrowth', 'profitMargins', 'debtToEquity', 'freeCashflow', 'beta', 'marketCap'];
+        cardKeys.forEach(key => {
+            const def = METRIC_DESCRIPTIONS[key];
+            if (!def) return;
+            const val = metrics[key];
+            const card = document.createElement('div');
+            card.style.cssText = 'background:#1a1a1a; border:1px solid #333; padding:16px; transition: border-color 0.2s;';
+            card.onmouseenter = () => card.style.borderColor = '#555';
+            card.onmouseleave = () => card.style.borderColor = '#333';
+            card.innerHTML = `
+                <div style="font-size:0.65rem; color:#888; text-transform:uppercase; letter-spacing:1px; margin-bottom:6px;">${def.label}</div>
+                <div style="font-size:1.3rem; font-weight:700; font-family:monospace; color:#fff; margin-bottom:8px;">${def.format(val)}</div>
+                <div style="font-size:0.72rem; color:var(--text-muted); line-height:1.4;">${def.desc}</div>
+            `;
+            metricCards.appendChild(card);
+        });
+        
+        // Officers string (Only CEO)
+        sbCEOList.innerHTML = '';
+        if (data.financial_data?.key_officers) {
+            data.financial_data.key_officers.slice(0, 1).forEach(o => {
+                let wpLink = `https://en.wikipedia.org/wiki/Special:Search?search=${encodeURIComponent(o.name)}`;
+                sbCEOList.innerHTML += `<a href="${wpLink}" target="_blank" class="hover:underline text-[0.95rem]" style="color: var(--accent)">${o.name}</a><span class="text-xs text-gray-500">${o.title}</span>`;
+            });
+        }
+
+        // Sidebar Risk Badges
+        if (data.health_scores && !data.health_scores.error) {
+            sidebarRiskScores.classList.remove('hidden');
+            const st = data.health_scores.short_term.score;
+            const lt = data.health_scores.long_term.score;
+            sbStCircle.innerText = st;
+            sbStCircle.style.color = `hsl(${st * 1.2}, 100%, 50%)`;
+            sbStCircle.style.borderColor = `hsl(${st * 1.2}, 100%, 40%)`;
+            
+            sbLtCircle.innerText = lt;
+            sbLtCircle.style.color = `hsl(${lt * 1.2}, 100%, 50%)`;
+            sbLtCircle.style.borderColor = `hsl(${lt * 1.2}, 100%, 40%)`;
+
+            // Logo glow based on average safety
+            const avg = (st + lt) / 2;
+            const glowHue = avg * 1.2; // 0=red, 60=yellow, 120=green
+            document.getElementById('companyLogoBox').style.boxShadow = `0 0 12px hsla(${glowHue}, 100%, 45%, 0.4)`;
+        }
+
+        // Render Markdown content internally separated
+        // Finance Output
+        let finMd = `## Financial Health\n`;
+        if (data.health_scores) {
+            finMd += `### Short Term Risk Score: ${data.health_scores.short_term.score}/100\n`;
+            data.health_scores.short_term.breakdown.forEach(b => finMd += `- ${b.item}: **${b.impact}**\n`);
+            finMd += `\n### Long Term Risk Score: ${data.health_scores.long_term.score}/100\n`;
+            data.health_scores.long_term.breakdown.forEach(b => finMd += `- ${b.item}: **${b.impact}**\n`);
+        }
+        financeContent.innerHTML = marked.parse(finMd);
+
+        // News Output — Card-based layout (no markdown, clean HTML)
+        newsContent.innerHTML = '';
+        
+        if (data.signal_metadata) {
+            newsContent.innerHTML += `<div style="padding:12px 16px; background:#1a1a1a; border:1px solid #333; margin-bottom:20px; font-size:0.75rem; color:var(--text-muted); letter-spacing:1px;">
+                SIGNALS: ${data.signal_metadata.relevant_articles_found} / ${data.signal_metadata.total_articles_fetched} articles above threshold (${data.signal_metadata.dynamic_threshold_applied})
+            </div>`;
+        }
+
+        if (data.relevant_signals && data.relevant_signals.length > 0 && !data.relevant_signals[0].error) {
+            data.relevant_signals.forEach((sig, idx) => {
+                let urlStr = sig.url || '#';
+                if (urlStr.includes('consent.yahoo.com')) {
+                    urlStr = `https://www.google.com/search?q=${encodeURIComponent(sig.title)}`;
+                }
+                
+                // Extract domain for favicon
+                let faviconUrl = '';
+                try {
+                    const domain = new URL(urlStr).hostname;
+                    faviconUrl = `https://www.google.com/s2/favicons?domain=${domain}&sz=32`;
+                } catch(e) {}
+
+                const scoreColor = sig.semantic_signal_score >= 0.3 ? '#ff6b6b' : sig.semantic_signal_score >= 0.2 ? '#ffa94d' : '#69db7c';
+
+                const card = document.createElement('div');
+                card.style.cssText = 'border:1px solid #333; padding:16px; margin-bottom:12px; background:#1a1a1a; transition: border-color 0.2s;';
+                card.onmouseenter = () => card.style.borderColor = '#555';
+                card.onmouseleave = () => card.style.borderColor = '#333';
+
+                card.innerHTML = `
+                    <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px; margin-bottom:10px;">
+                        <div style="display:flex; align-items:center; gap:8px; flex:1; min-width:0;">
+                            ${faviconUrl ? `<img src="${faviconUrl}" alt="" style="width:16px;height:16px;flex-shrink:0;border-radius:2px;">` : ''}
+                            <a href="${urlStr}" target="_blank" style="color:var(--text-main); font-weight:600; font-size:0.9rem; text-decoration:none; line-height:1.3; overflow:hidden; text-overflow:ellipsis; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;" onmouseover="this.style.color='var(--accent)'" onmouseout="this.style.color='var(--text-main)'">${sig.title}</a>
+                        </div>
+                        <span style="background:${scoreColor}22; color:${scoreColor}; border:1px solid ${scoreColor}44; padding:2px 8px; font-size:0.65rem; font-weight:700; font-family:monospace; white-space:nowrap; flex-shrink:0;">${sig.semantic_signal_score.toFixed(3)}</span>
+                    </div>
+                    <p style="color:var(--text-muted); font-size:0.8rem; line-height:1.5; margin:0;">${sig.description}</p>
+                    <div style="margin-top:8px; font-size:0.65rem; color:#666; text-transform:uppercase; letter-spacing:1px;">${sig.source}</div>
+                `;
+
+                newsContent.appendChild(card);
+            });
+        } else {
+            newsContent.innerHTML += '<p style="color:var(--text-muted); text-align:center; padding:40px;">No highly critical market signals detected in the configured timeframe.</p>';
+        }
+    }
+
+    // --- Render AI Analysis (from cache or API) ---
+    function renderAiAnalysis(aiData) {
+        if (!aiData) return;
+
+        aiSummary.innerText = aiData.executive_summary || "No summary provided.";
+        aiAction.innerText = aiData.recommended_action || "No action provided.";
+
+        // Financial Deep Dive
+        const deepDiveSection = document.getElementById('financialDeepDiveSection');
+        const deepDiveContent = document.getElementById('financialDeepDiveContent');
+        if (aiData.financial_deep_dive) {
+            deepDiveContent.innerHTML = marked.parse(aiData.financial_deep_dive);
+            deepDiveSection.classList.remove('hidden');
+        } else {
+            deepDiveSection.classList.add('hidden');
+        }
+
+        // News Impact Analysis
+        const newsImpactSection = document.getElementById('newsImpactSection');
+        const newsImpactContent = document.getElementById('newsImpactContent');
+        if (aiData.news_impact_analysis) {
+            newsImpactContent.innerHTML = marked.parse(aiData.news_impact_analysis);
+            newsImpactSection.classList.remove('hidden');
+        } else {
+            newsImpactSection.classList.add('hidden');
+        }
+
+        // Risk Scenarios
+        const riskSection = document.getElementById('riskScenariosSection');
+        const riskContent = document.getElementById('riskScenariosContent');
+        if (aiData.risk_scenarios) {
+            riskContent.innerHTML = marked.parse(aiData.risk_scenarios);
+            riskSection.classList.remove('hidden');
+        } else {
+            riskSection.classList.add('hidden');
+        }
+        
+        // Draw Chart
+        if (aiData.dynamic_ui_config) {
+            if (dynamicChartInstance) dynamicChartInstance.destroy();
+            dynamicChartInstance = createChart('dynamicChart', aiData.dynamic_ui_config);
+        }
+        
+        // Show the result panel, hide loading
+        const aiLoading = document.getElementById('aiLoading');
+        aiLoading.classList.add('hidden');
+        aiLoading.classList.add('opacity-0');
+        aiAnalysisResult.classList.remove('hidden');
+        
+        // Store on raw data for chat context
+        if (currentRawData) currentRawData.ai_analysis = aiData;
+    }
+
+    // --- 5. AI GENERATION LOGIC ---
+
+    btnAiAnalyze.addEventListener('click', async () => {
+        if (!currentRawData) return;
+        
+        btnAiAnalyze.disabled = true;
+        const orgHtml = btnAiAnalyze.innerHTML;
+        btnAiAnalyze.innerHTML = '<div class="spinner w-4 h-4 border-2 mr-2"></div> Standby...';
+        
+        aiAnalysisResult.classList.add('hidden');
+        const aiLoading = document.getElementById('aiLoading');
+        const aiProgressBar = document.getElementById('aiProgressBar');
+        
+        aiLoading.classList.remove('hidden');
+        // trigger reflow
+        void aiLoading.offsetWidth;
+        aiLoading.classList.remove('opacity-0');
+        
+        let width = 0;
+        const progressInterval = setInterval(() => {
+            width += (100 - width) * 0.15;
+            aiProgressBar.style.width = width + '%';
+        }, 300);
+        
+        try {
+            const response = await fetch('/analyze_supplier_ai', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(currentRawData)
+            });
+            const data = await response.json();
+            
+            if (data.error) { alert("AI Error: " + data.error); return; }
+
+            renderAiAnalysis(data);
+            
+        } catch (err) {
+            console.error(err);
+            alert("Model failed to process request.");
+        } finally {
+            clearInterval(progressInterval);
+            aiProgressBar.style.width = '100%';
+            
+            setTimeout(() => {
+                // First: completely hide the loading overlay
+                aiLoading.classList.add('hidden');
+                aiLoading.classList.add('opacity-0');
+
+                // Then: show generated content if there are no errors
+                if(currentRawData && !aiAnalysisResult.innerHTML.includes("AI Error")) {
+                    aiAnalysisResult.classList.remove('hidden');
+                }
+                
+                btnAiAnalyze.disabled = false;
+                btnAiAnalyze.innerHTML = orgHtml;
+            }, 600);
+        }
+    });
+
+    // Downloads
+    function downloadJSON() {
+        if (!currentRawData) return;
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(currentRawData, null, 2));
+        const anchor = document.createElement('a');
+        anchor.href = dataStr;
+        anchor.download = `Terminal_${currentRawData.ticker_used || 'Export'}.json`;
+        anchor.click();
+    }
+
+    // --- 6. CHAT & RESIZE LOGIC ---
+    const oldChatBar = document.getElementById('oldChatBar');
+    const oldChatInput = document.getElementById('oldChatInput');
+    const oldChatSendBtn = document.getElementById('oldChatSendBtn');
+    
+    const rightChatPanel = document.getElementById('rightChatPanel');
+    const chatResizer = document.getElementById('chatResizer');
+    const closeRightChatBtn = document.getElementById('closeRightChatBtn');
+    const rightChatInput = document.getElementById('rightChatInput');
+    const rightChatSendBtn = document.getElementById('rightChatSendBtn');
+    const chatHistory = document.getElementById('chatHistory');
+    let conversationMessages = []; // Tracks full chat history for multi-turn LLM context
+
+    // Launch Right Chat Sequence
+    function triggerChatOpen(initialMsg) {
+        if (!initialMsg) return;
+        
+        oldChatBar.style.display = 'none';
+        rightChatPanel.style.display = 'flex';
+        chatResizer.style.display = 'block';
+        chatResizer.classList.remove('hidden');
+
+        // Auto-switch to AI Analysis tab
+        switchToAiTab();
+
+        rightChatInput.focus();
+        appendChatMessage("USER", initialMsg);
+        sendChatToLLM(initialMsg);
+    }
+
+    function switchToAiTab() {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        const aiBtn = document.querySelector('.tab-btn[data-target="tab-ai"]');
+        if (aiBtn) aiBtn.classList.add('active');
+        const aiTab = document.getElementById('tab-ai');
+        if (aiTab) aiTab.classList.add('active');
+    }
+
+    function appendChatMessage(role, text, isMarkdown) {
+        const div = document.createElement('div');
+        div.className = 'w-full flex-shrink-0 flex flex-col gap-1';
+        
+        const isUser = role === 'USER';
+        
+        const roleLabel = document.createElement('span');
+        roleLabel.className = 'text-[10px] font-bold tracking-wider';
+        roleLabel.style.color = isUser ? '#e0e0e0' : 'var(--accent)';
+        roleLabel.innerText = role;
+
+        const pBox = document.createElement('div');
+        if (isUser) {
+            pBox.className = 'p-3 text-sm font-light text-[#e0e0e0] bg-[#1a1a1a] border-l-2 border-[#555]';
+            pBox.innerText = text;
+            // Track user message for conversation history
+            conversationMessages.push({ role: 'user', content: text });
+        } else {
+            pBox.className = 'p-3 text-sm text-[#e0e0e0] bg-[#121212] border border-[#333]';
+            if (isMarkdown) {
+                pBox.innerHTML = marked.parse(text);
+            } else {
+                pBox.innerText = text;
+            }
+        }
+
+        div.appendChild(roleLabel);
+        div.appendChild(pBox);
+        chatHistory.appendChild(div);
+        chatHistory.scrollTop = chatHistory.scrollHeight;
+        return pBox;
+    }
+
+    async function sendChatToLLM(question) {
+        // Show thinking indicator
+        const thinkingBox = appendChatMessage("SYSTEM", "Analyzing...");
+        thinkingBox.innerHTML = '<div class="flex items-center gap-2"><div class="spinner w-3 h-3 border-2"></div><span style="color:var(--text-muted); font-size:0.75rem;">Processing query...</span></div>';
+
+        try {
+            const response = await fetch('/chat_ai', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    question: question,
+                    context: currentRawData || {},
+                    ai_analysis: currentRawData?.ai_analysis || {},
+                    conversation_history: conversationMessages,
+                    existing_chart_titles: getExistingChartTitles()
+                })
+            });
+            const result = await response.json();
+            
+            if (result.error) {
+                thinkingBox.innerText = "Error: " + result.error;
+                thinkingBox.style.color = '#ff6b6b';
+            } else {
+                const replyText = result.reply_text || result.answer || "No response.";
+                thinkingBox.innerHTML = marked.parse(replyText);
+                conversationMessages.push({ role: 'assistant', content: replyText });
+
+                // Handle ui_action — could be an object or nested inside reply
+                let uiAction = result.ui_action;
+
+                // Fallback: if LLM embedded action JSON in reply_text, try to extract it
+                if (!uiAction && typeof replyText === 'string') {
+                    const actionMatch = replyText.match(/\{"action"\s*:\s*"[^"]+"/);
+                    if (actionMatch) {
+                        try {
+                            const jsonStart = replyText.indexOf(actionMatch[0]);
+                            let depth = 0, end = jsonStart;
+                            for (let i = jsonStart; i < replyText.length; i++) {
+                                if (replyText[i] === '{') depth++;
+                                if (replyText[i] === '}') depth--;
+                                if (depth === 0) { end = i + 1; break; }
+                            }
+                            uiAction = JSON.parse(replyText.substring(jsonStart, end));
+                        } catch(e) {}
+                    }
+                }
+
+                if (uiAction) {
+                    handleUiAction(uiAction);
+                }
+                // Support array of actions (ui_actions)
+                if (result.ui_actions && Array.isArray(result.ui_actions)) {
+                    result.ui_actions.forEach(a => handleUiAction(a));
+                }
+            }
+        } catch(err) {
+            thinkingBox.innerText = "Connection error: " + err.message;
+            thinkingBox.style.color = '#ff6b6b';
+        }
+        chatHistory.scrollTop = chatHistory.scrollHeight;
+    }
+
+    // Handle dynamic UI actions from chat LLM
+    function handleUiAction(action) {
+        if (!action || !action.action) return;
+        
+        if (action.action === 'update_chart') {
+            if (action.labels && action.values) {
+                // Ensure the canvas exists — it may have been destroyed by update_tab_content
+                let canvas = document.getElementById('dynamicChart');
+                if (!canvas) {
+                    // Recreate the chart container inside AI analysis result
+                    const aiResult = document.getElementById('aiAnalysisResult');
+                    if (aiResult) {
+                        const wrapper = document.createElement('div');
+                        wrapper.className = 'pl-4 border-l-[3px]';
+                        wrapper.style.borderLeftColor = 'var(--accent)';
+                        wrapper.innerHTML = `
+                            <h4 class="text-xs font-bold uppercase tracking-widest mb-4" style="color: var(--accent)">Dynamic Metric Plot</h4>
+                            <div style="width: 100%; max-height: 280px; margin-top: 10px;">
+                                <canvas id="dynamicChart"></canvas>
+                            </div>`;
+                        aiResult.appendChild(wrapper);
+                        canvas = document.getElementById('dynamicChart');
+                    }
+                }
+                if (!canvas) return;
+
+                if (dynamicChartInstance) dynamicChartInstance.destroy();
+                dynamicChartInstance = createChart('dynamicChart', action);
+                // Make sure AI result is visible and switch to AI tab
+                document.getElementById('aiAnalysisResult')?.classList.remove('hidden');
+                switchToAiTab();
+            }
+        } else if (action.action === 'switch_tab') {
+            const targetTab = action.tab || 'tab-ai';
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            const btn = document.querySelector(`.tab-btn[data-target="${targetTab}"]`);
+            if (btn) btn.classList.add('active');
+            const tab = document.getElementById(targetTab);
+            if (tab) tab.classList.add('active');
+        } else if (action.action === 'search_company') {
+            // LLM wants to search another company
+            const newCompany = action.company_name || '';
+            const newTicker = action.ticker || '';
+            if (newCompany && newTicker) {
+                appendChatMessage('SYSTEM', `Switching to ${newCompany} (${newTicker})...`);
+                conversationMessages = [];
+                companyInput.value = newCompany;
+                tickerInput.value = newTicker;
+                executeSearch(newCompany, newTicker);
+            }
+        } else if (action.action === 'update_tab_content') {
+            // Agentic UI: LLM appends styled HTML content to a tab (preserves existing)
+            const tabMap = {
+                'tab-ai': 'aiAnalysisResult',
+                'tab-finance': 'financeContent',
+                'tab-news': 'newsContent',
+                'ai-analysis': 'aiAnalysisResult',
+                'finance': 'financeContent',
+                'news': 'newsContent'
+            };
+            const containerId = tabMap[action.target_tab] || 'aiAnalysisResult';
+            const container = document.getElementById(containerId);
+            if (container && action.new_content) {
+                // Wrap injected content in the standard terminal styling
+                const wrapper = document.createElement('div');
+                wrapper.className = 'pl-4 border-l-[3px] mt-8';
+                wrapper.style.borderLeftColor = '#a78bfa';
+                wrapper.innerHTML = `<h4 class="text-xs font-bold uppercase tracking-widest mb-3" style="color: #a78bfa;">Agent Insight</h4><div class="leading-relaxed text-[#e0e0e0] text-sm prose">${action.new_content}</div>`;
+
+                if (action.content_type === 'replace') {
+                    container.innerHTML = '';
+                    container.appendChild(wrapper);
+                } else {
+                    // Default: append (preserve existing analysis)
+                    container.appendChild(wrapper);
+                }
+                container.classList.remove('hidden');
+                // Switch to the target tab
+                const tabId = action.target_tab?.startsWith('tab-') ? action.target_tab : 'tab-' + action.target_tab;
+                const tabBtn = document.querySelector(`.tab-btn[data-target="${tabId}"]`);
+                if (tabBtn) tabBtn.click();
+            }
+        } else if (action.action === 'append_new_chart') {
+            // Append a brand-new chart to the AI Analysis tab (or specified tab)
+            const cfg = action.chart_config || action;
+            if (cfg.labels && cfg.values) {
+                const tabMap = { 'tab-ai': 'aiAnalysisResult', 'tab-finance': 'financeContent', 'tab-news': 'newsContent', 'ai-analysis': 'aiAnalysisResult' };
+                const containerId = tabMap[action.target_tab] || 'aiAnalysisResult';
+                const container = document.getElementById(containerId);
+                if (!container) return;
+
+                const uniqueId = 'dynamicChart_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
+
+                const wrapper = document.createElement('div');
+                wrapper.className = 'pl-4 border-l-[3px] mt-8';
+                wrapper.style.borderLeftColor = 'var(--accent)';
+                wrapper.innerHTML = `
+                    <h4 class="text-xs font-bold uppercase tracking-widest mb-4" style="color: var(--accent)">${cfg.title || 'Chart'}</h4>
+                    <div style="width:100%; max-height:300px; margin-top:10px;">
+                        <canvas id="${uniqueId}"></canvas>
+                    </div>`;
+                container.appendChild(wrapper);
+                container.classList.remove('hidden');
+
+                createChart(uniqueId, cfg);
+                switchToAiTab();
+            }
+        } else if (action.action === 'highlight_risk') {
+            // Flash risk indicators
+            const circles = [document.getElementById('sbStCircle'), document.getElementById('sbLtCircle')];
+            circles.forEach(c => {
+                if (c) {
+                    c.style.transition = 'transform 0.3s, box-shadow 0.3s';
+                    c.style.transform = 'scale(1.3)';
+                    c.style.boxShadow = '0 0 15px rgba(255,100,100,0.6)';
+                    setTimeout(() => { c.style.transform = 'scale(1)'; c.style.boxShadow = 'none'; }, 2000);
+                }
+            });
+        }
+    }
+
+    // Force Update: bypass cache and re-fetch fresh data
+    async function forceUpdateSupplier() {
+        if (!currentRawData) return;
+        const btnForceUpdate = document.getElementById('btnForceUpdate');
+        btnForceUpdate.innerText = 'UPDATING...';
+        btnForceUpdate.style.opacity = '0.5';
+
+        try {
+            const response = await fetch('/force_update_supplier', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    company_name: currentRawData.company_name,
+                    ticker: currentRawData.ticker_used
+                })
+            });
+            const freshData = await response.json();
+            currentRawData = freshData;
+            populateDashboard(freshData);
+
+            if (freshData.ai_analysis && !freshData.ai_analysis.error) {
+                renderAiAnalysis(freshData.ai_analysis);
+            }
+
+            btnForceUpdate.style.display = 'none';
+        } catch(err) {
+            console.error('Force update error:', err);
+            btnForceUpdate.innerText = 'RETRY';
+        }
+        btnForceUpdate.style.opacity = '1';
+    }
+
+    oldChatSendBtn.addEventListener('click', () => {
+        const val = oldChatInput.value.trim();
+        if(val) { oldChatInput.value = ''; triggerChatOpen(val); }
+    });
+    
+    oldChatInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            const val = oldChatInput.value.trim();
+            if(val) { oldChatInput.value = ''; triggerChatOpen(val); }
+        }
+    });
+
+    rightChatSendBtn.addEventListener('click', () => {
+        const val = rightChatInput.value.trim();
+        if(val) { 
+            rightChatInput.value = ''; 
+            appendChatMessage("USER", val); 
+            sendChatToLLM(val);
+        }
+    });
+    
+    rightChatInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            const val = rightChatInput.value.trim();
+            if(val) { 
+                rightChatInput.value = ''; 
+                appendChatMessage("USER", val); 
+                sendChatToLLM(val);
+            }
+        }
+    });
+
+    closeRightChatBtn.addEventListener('click', () => {
+        rightChatPanel.style.display = 'none';
+        chatResizer.classList.add('hidden');
+        oldChatBar.style.display = 'flex';
+    });
+
+    // --- DRAG TO RESIZE LOGIC ---
+    let isResizing = false;
+
+    chatResizer.addEventListener('mousedown', (e) => {
+        e.preventDefault(); // Prevents defaults on mousedown
+        isResizing = true;
+        document.body.style.userSelect = 'none'; // Prevent text selection during resize
+        document.body.style.cursor = 'col-resize';
+    });
+
+    document.addEventListener('mousemove', (e) => {
+        if (!isResizing) return;
+        
+        // Right Panel is clamped on the right bounding box
+        // Distance from Right Edge = Window Width - current MouseX
+        let newWidth = window.innerWidth - e.clientX;
+        
+        // Clamp between 250px and 800px per specifications
+        if (newWidth < 250) newWidth = 250;
+        if (newWidth > 800) newWidth = 800;
+        
+        rightChatPanel.style.width = newWidth + 'px';
+    });
+
+    document.addEventListener('mouseup', () => {
+        if (isResizing) {
+            isResizing = false;
+            document.body.style.userSelect = '';
+            document.body.style.cursor = '';
+        }
+    });
+
+    // --- 7. TOPBAR SEARCH OVERLAY ---
+    const searchOverlay = document.getElementById('searchOverlay');
+    const overlayCompanyInput = document.getElementById('overlayCompanyInput');
+    const overlayTickerInput = document.getElementById('overlayTickerInput');
+    const overlaySearchBtn = document.getElementById('overlaySearchBtn');
+    const topbarSearchBtn = document.getElementById('topbarSearchBtn');
+
+    function openSearchOverlay() {
+        searchOverlay.classList.add('visible');
+        setTimeout(() => overlayCompanyInput.focus(), 50);
+    }
+
+    function closeSearchOverlay(e) {
+        // Close only if clicking backdrop (not inner box)
+        if (e && e.target !== searchOverlay) return;
+        searchOverlay.classList.remove('visible');
+    }
+
+    function triggerOverlaySearch() {
+        const company = overlayCompanyInput.value.trim();
+        const ticker = overlayTickerInput.value.trim();
+        if (!company) { overlayCompanyInput.focus(); return; }
+        searchOverlay.classList.remove('visible');
+        companyInput.value = company;
+        tickerInput.value = ticker;
+        executeSearch(company, ticker);
+    }
+
+    topbarSearchBtn.addEventListener('click', openSearchOverlay);
+    overlaySearchBtn.addEventListener('click', triggerOverlaySearch);
+
+    overlayCompanyInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') triggerOverlaySearch();
+        if (e.key === 'Escape') searchOverlay.classList.remove('visible');
+    });
+    overlayTickerInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') triggerOverlaySearch();
+        if (e.key === 'Escape') searchOverlay.classList.remove('visible');
+    });
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') searchOverlay.classList.remove('visible');
+    });
+
+</script>
+
+</body>
+</html>

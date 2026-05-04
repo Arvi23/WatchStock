@@ -1,0 +1,28 @@
+# Virtual Environment
+.venv/
+venv/
+ENV/
+env/
+
+# Python Cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Environment Variables
+.env
+.env.local
+
+# ML Models
+models/
+sentence_transformers/
+.cache/
+
+# IDE/OS files
+.DS_Store
+.vscode/
+.idea/
+
+# Archive & Claude memory
+_archive/
+.claude/
