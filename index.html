@@ -715,14 +715,28 @@
 
     // ---- Watchlist ----
     let _watchlistData = [];
+    const wlCacheKey = () => `wl_${currentUser?.username || ''}`;
 
     async function loadWatchlist() {
         if (!currentUser) return;
+        // Render cached data instantly (synchronous localStorage read)
         try {
-            const res = await fetch(`/watchlist?username=${encodeURIComponent(currentUser.username)}`);
-            _watchlistData = await res.json();
-        } catch(e) { _watchlistData = []; }
-        renderWatchlist();
+            const raw = localStorage.getItem(wlCacheKey());
+            if (raw) { _watchlistData = JSON.parse(raw); renderWatchlist(); }
+        } catch(e) {}
+        // Then silently fetch fresh prices in background
+        _refreshWatchlistPrices();
+    }
+
+    async function _refreshWatchlistPrices() {
+        if (!currentUser) return;
+        try {
+            const res   = await fetch(`/watchlist?username=${encodeURIComponent(currentUser.username)}`);
+            const fresh = await res.json();
+            _watchlistData = fresh;
+            localStorage.setItem(wlCacheKey(), JSON.stringify(fresh));
+            renderWatchlist();
+        } catch(e) {}
     }
 
     function renderWatchlist() {
@@ -758,18 +772,26 @@
         if (!ticker) return;
         const inList = _watchlistData.some(x => x.ticker === ticker);
         if (inList) {
-            await fetch(`/watchlist/remove?username=${encodeURIComponent(currentUser.username)}&ticker=${ticker}`, { method: 'DELETE' });
             _watchlistData = _watchlistData.filter(x => x.ticker !== ticker);
         } else {
-            await fetch('/watchlist/add', {
+            // Seed with cached price if we already have it from a previous analysis load
+            const cachedPrice = currentRawData?.financial_data?.metrics?.currentPrice ?? null;
+            _watchlistData.push({ ticker, company_name: companyName, price: cachedPrice, change_pct: null });
+        }
+        // Write to localStorage immediately so the next load is instant
+        localStorage.setItem(wlCacheKey(), JSON.stringify(_watchlistData));
+        updateWatchlistStar(ticker);
+        renderWatchlist();
+        // Fire-and-forget: persist to DB and silently refresh price
+        if (inList) {
+            fetch(`/watchlist/remove?username=${encodeURIComponent(currentUser.username)}&ticker=${ticker}`, { method: 'DELETE' });
+        } else {
+            fetch('/watchlist/add', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ username: currentUser.username, ticker, company_name: companyName }),
-            });
-            _watchlistData.push({ ticker, company_name: companyName, price: null, change_pct: null });
+            }).then(() => _refreshWatchlistPrices());
         }
-        updateWatchlistStar(ticker);
-        renderWatchlist();
     }
 
     function updateWatchlistStar(ticker) {
