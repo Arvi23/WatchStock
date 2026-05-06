@@ -572,6 +572,15 @@
         </div>
     </div>
 
+    <!-- Score Breakdown Popover -->
+    <div id="scoreBreakdownPopover" style="display:none; position:fixed; z-index:3000; background:#1e1e1e; border:1px solid #444; padding:16px; width:290px; box-shadow:0 8px 32px rgba(0,0,0,0.7); pointer-events:all;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; border-bottom:1px solid #333; padding-bottom:10px;">
+            <span id="popoverTitle" style="font-size:0.62rem; letter-spacing:2px; color:var(--text-muted);"></span>
+            <button onclick="hideScoreBreakdown()" style="background:none; border:none; color:#666; cursor:pointer; font-size:1rem; padding:0; line-height:1;">✕</button>
+        </div>
+        <div id="popoverContent"></div>
+    </div>
+
     <!-- Toast notification -->
     <div id="toastMsg" style="display:none; position:fixed; bottom:24px; left:50%; transform:translateX(-50%); background:#1e1e1e; border:1px solid #444; color:#ccc; padding:10px 20px; font-size:0.75rem; letter-spacing:1px; z-index:3000; pointer-events:none;"></div>
 
@@ -748,6 +757,75 @@
         document.getElementById('tickerInput').value  = ticker;
         document.getElementById('searchBtn').click();
     }
+
+    // ---- Score Breakdown Popover ----
+    function showScoreBreakdown(key, event) {
+        event.stopPropagation();
+        if (!currentRawData?.scores) return;
+        const data    = currentRawData.scores[key];
+        if (!data) return;
+        const labels  = { fundamental: 'FUNDAMENTAL', analyst: 'ANALYST', valuation: 'VALUATION', smart_money: 'SMART MONEY' };
+        document.getElementById('popoverTitle').textContent = (labels[key] || key.toUpperCase()) + ' — BREAKDOWN';
+
+        let html = '';
+        (data.breakdown || []).forEach(item => {
+            const s = item.score;
+            if (s !== undefined) {
+                const c = scoreColor(s);
+                html += `<div style="margin-bottom:10px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:3px;">
+                        <span style="font-size:0.68rem; color:#a0a0a0; flex:1;">${item.item}</span>
+                        <span style="font-size:0.7rem; font-weight:700; font-family:monospace; color:${c}; margin-left:8px;">${s}<span style="font-size:0.55rem; color:#555;">/100</span></span>
+                        ${item.weight ? `<span style="font-size:0.55rem; color:#555; margin-left:6px;">${item.weight}</span>` : ''}
+                    </div>
+                    <div style="height:3px; background:#2a2a2a; border-radius:2px; overflow:hidden;">
+                        <div style="height:100%; width:${s}%; background:${c}; transition:width 0.4s ease;"></div>
+                    </div>
+                </div>`;
+            } else if (item.impact !== undefined) {
+                const c = item.impact >= 0 ? '#4caf50' : '#f44336';
+                html += `<div style="font-size:0.65rem; color:#888; padding:3px 0; border-bottom:1px solid #222;">
+                    ${item.item} <span style="color:${c}; font-family:monospace; float:right;">${item.impact > 0 ? '+' : ''}${item.impact}</span>
+                </div>`;
+            } else {
+                html += `<div style="font-size:0.63rem; color:#666; padding:3px 0; border-bottom:1px solid #222;">${item.item || ''}</div>`;
+            }
+        });
+
+        if (key === 'smart_money' && data.flags?.length) {
+            html += `<div style="margin-top:10px; padding-top:8px; border-top:1px solid #333;">`;
+            data.flags.forEach(f => { html += `<div style="font-size:0.62rem; color:#ff9800; margin-bottom:4px; line-height:1.4;">⚠ ${f}</div>`; });
+            html += `</div>`;
+        }
+        if (key === 'analyst' && data.upside_pct != null) {
+            html += `<div style="margin-top:10px; padding:7px; background:#1a1a1a; border:1px solid #333; font-size:0.65rem; color:#a0a0a0;">
+                Price-target upside: <span style="color:${data.upside_pct >= 0 ? '#4caf50' : '#f44336'}; font-weight:700; font-family:monospace;">${data.upside_pct > 0 ? '+' : ''}${data.upside_pct}%</span>
+            </div>`;
+        }
+
+        document.getElementById('popoverContent').innerHTML = html || '<div style="color:#555; font-size:0.72rem;">No breakdown available.</div>';
+
+        const popover = document.getElementById('scoreBreakdownPopover');
+        popover.style.display = 'block';
+        const rect     = event.currentTarget.getBoundingClientRect();
+        const pw       = 290;
+        let   left     = rect.left;
+        let   top      = rect.bottom + 8;
+        if (left + pw > window.innerWidth - 12) left = window.innerWidth - pw - 12;
+        if (top + popover.offsetHeight > window.innerHeight - 12) top = rect.top - popover.offsetHeight - 8;
+        popover.style.left = left + 'px';
+        popover.style.top  = top  + 'px';
+    }
+
+    function hideScoreBreakdown() {
+        document.getElementById('scoreBreakdownPopover').style.display = 'none';
+    }
+
+    document.addEventListener('click', e => {
+        const p = document.getElementById('scoreBreakdownPopover');
+        if (p && p.style.display !== 'none' && !p.contains(e.target) && !e.target.closest('[data-score-key]'))
+            hideScoreBreakdown();
+    });
 
     // ---- Yahoo Finance link ----
     function openYahooFinance() {
@@ -1072,6 +1150,24 @@
         marketCap:        { label: 'Market Cap',         desc: 'Total market value of all outstanding shares.', format: fmtB },
     };
 
+    // Maps each metric key to a health tier: 'good' | 'ok' | 'bad' | 'neutral'
+    const METRIC_HEALTH = {
+        currentRatio:     v => v >= 2 ? 'good' : v >= 1 ? 'ok' : 'bad',
+        quickRatio:       v => v >= 1 ? 'good' : v >= 0.5 ? 'ok' : 'bad',
+        profitMargins:    v => v >= 0.15 ? 'good' : v >= 0.05 ? 'ok' : v >= 0 ? 'neutral' : 'bad',
+        operatingMargins: v => v >= 0.15 ? 'good' : v >= 0.05 ? 'ok' : v >= 0 ? 'neutral' : 'bad',
+        revenueGrowth:    v => v >= 0.10 ? 'good' : v >= 0 ? 'ok' : 'bad',
+        earningsGrowth:   v => v >= 0.15 ? 'good' : v >= 0 ? 'ok' : 'bad',
+        trailingEps:      v => v > 0 ? 'good' : 'bad',
+        forwardEps:       v => v > 0 ? 'good' : 'bad',
+        debtToEquity:     v => v < 50 ? 'good' : v < 150 ? 'ok' : 'bad',
+        freeCashflow:     v => v > 0 ? 'good' : 'bad',
+        dividendYield:    () => 'neutral',
+        beta:             v => v < 1 ? 'good' : v < 1.5 ? 'ok' : 'bad',
+        marketCap:        () => 'neutral',
+    };
+    const HEALTH_COLOR = { good: '#4caf50', ok: '#ffc107', bad: '#f44336', neutral: '#a0a0a0' };
+
     // --- Finance Tab Rendering Helpers ---
 
     function scoreColor(s) {
@@ -1101,10 +1197,13 @@
         const labels = { fundamental: 'Fundamental', analyst: 'Analyst', valuation: 'Valuation', smart_money: 'Smart Money' };
         const weights = { fundamental: '25%', analyst: '30%', valuation: '30%', smart_money: '15%' };
         document.getElementById('subScoresGrid').innerHTML = Object.entries(sub).map(([k, v]) => `
-            <div style="text-align:center; padding:8px; background:#1e1e1e; border:1px solid #333;">
+            <div data-score-key="${k}" onclick="showScoreBreakdown('${k}', event)"
+                 style="text-align:center; padding:8px; background:#1e1e1e; border:1px solid #333; cursor:pointer; transition:border-color 0.15s;"
+                 onmouseover="this.style.borderColor='#555'" onmouseout="this.style.borderColor='#333'">
                 <div style="font-size:1.1rem; font-weight:700; font-family:monospace; color:${scoreColor(v)};">${v}</div>
                 <div style="font-size:0.58rem; color:#888; margin-top:3px; letter-spacing:0.5px;">${labels[k]}</div>
                 <div style="font-size:0.55rem; color:#555; margin-top:1px;">${weights[k]}</div>
+                <div style="font-size:0.52rem; color:#444; margin-top:3px;">click for breakdown</div>
             </div>`).join('');
     }
 
@@ -1223,11 +1322,18 @@
             const color = isBuy ? '#4caf50' : isSell ? '#f44336' : '#888';
             const arrow = isBuy ? '↑' : isSell ? '↓' : '·';
             const val = t.value ? ' $' + (Math.abs(t.value) / 1e6).toFixed(1) + 'M' : '';
-            return `<div style="font-size:0.63rem; padding:3px 0; border-bottom:1px solid #1e1e1e; display:flex; gap:6px; align-items:baseline;">
-                <span style="color:${color}; font-weight:700;">${arrow}</span>
-                <span style="color:#888; flex-shrink:0;">${t.date?.slice(0,10) || ''}</span>
-                <span style="color:#ccc; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1;">${t.insider || ''}</span>
-                <span style="color:#666; white-space:nowrap;">${val}</span>
+            return `<div style="font-size:0.63rem; padding:4px 0; border-bottom:1px solid #1e1e1e; display:flex; gap:6px; align-items:flex-start;">
+                <span style="color:${color}; font-weight:700; flex-shrink:0; margin-top:1px;">${arrow}</span>
+                <div style="flex:1; min-width:0;">
+                    <div style="display:flex; justify-content:space-between; align-items:baseline; gap:4px;">
+                        <span style="color:#ccc; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${t.insider || ''}</span>
+                        <span style="color:#666; white-space:nowrap; flex-shrink:0;">${val}</span>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; margin-top:1px;">
+                        ${t.title ? `<span style="font-size:0.58rem; color:#666; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${t.title}</span>` : ''}
+                        <span style="font-size:0.58rem; color:#555; flex-shrink:0; margin-left:auto;">${t.date?.slice(0,10) || ''}</span>
+                    </div>
+                </div>
             </div>`;
         }).join('');
 
@@ -1574,9 +1680,11 @@
             card.style.cssText = 'background:#1a1a1a; border:1px solid #333; padding:14px 16px; transition:border-color 0.2s; cursor:default;';
             card.onmouseenter = () => card.style.borderColor = '#555';
             card.onmouseleave = () => card.style.borderColor = '#333';
+            const tier  = METRIC_HEALTH[key]?.(val) ?? 'neutral';
+            const vColor = HEALTH_COLOR[tier];
             card.innerHTML = `
                 <div style="font-size:0.6rem; color:#888; text-transform:uppercase; letter-spacing:1px; margin-bottom:5px;">${def.label}</div>
-                <div style="font-size:1.25rem; font-weight:700; font-family:monospace; color:#fff; margin-bottom:7px;">${def.format(val)}</div>
+                <div style="font-size:1.25rem; font-weight:700; font-family:monospace; color:${vColor}; margin-bottom:7px;">${def.format(val)}</div>
                 <div style="font-size:0.68rem; color:var(--text-muted); line-height:1.4;">${def.desc}</div>
             `;
             metricCards.appendChild(card);
