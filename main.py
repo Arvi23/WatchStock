@@ -120,12 +120,31 @@ def get_db():
 
 
 def parse_llm_json(text: str) -> dict:
-    """Parse LLM response to JSON, stripping markdown code fences if present (Claude does this)."""
+    """Parse LLM response to JSON. Handles code fences, leading text, trailing text."""
     text = text.strip()
     # Strip ```json ... ``` or ``` ... ``` wrappers
     text = re.sub(r'^```(?:json)?\s*', '', text)
     text = re.sub(r'\s*```$', '', text.strip())
-    return json.loads(text.strip())
+    text = text.strip()
+
+    # Try direct parse
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        pass
+
+    # Fall back: extract outermost { ... } block (handles preamble/postamble text)
+    start = text.find('{')
+    end = text.rfind('}')
+    if start != -1 and end > start:
+        try:
+            return json.loads(text[start:end + 1])
+        except json.JSONDecodeError:
+            pass
+
+    # Last resort: log raw content and re-raise
+    print(f"[parse_llm_json] Could not parse. Raw snippet: {text[:500]}")
+    raise json.JSONDecodeError("No valid JSON object found", text, 0)
 
 
 def get_setting(key: str, default: str = "") -> str:
@@ -1205,23 +1224,25 @@ async def _run_ai_analysis(data: dict):
         "4. Consider valuation honestly — is it cheap or expensive relative to growth?\n"
         "5. Write all markdown fields in rich markdown (##, **bold**, bullet lists, > blockquotes for key warnings).\n\n"
 
-        "Return STRICT JSON with EXACTLY this structure (all fields required):\n"
+        "Return ONLY valid JSON — no markdown, no explanation, no preamble. "
+        "Use exactly this structure:\n"
         "{\n"
-        '  "executive_summary": "3-5 sentence investment verdict. Key strengths, risks, and overall stance.",\n'
-        '  "verdict": {"action": "STRONG BUY|BUY|HOLD|REDUCE|SELL|STRONG SELL", "confidence": <integer 0-100>, "horizon": "e.g. 12 months"},\n'
-        '  "recommended_action": "Full sentence elaborating the verdict with key supporting rationale.",\n'
-        '  "financial_deep_dive": "Rich markdown. Analyse each available metric. What do the valuation multiples imply about market expectations? Compare to sector norms. Min 200 words.",\n'
-        '  "news_impact_analysis": "Rich markdown. For each relevant news signal: cite the headline, explain the investment implication, connect to a specific metric or price driver. If no news, note what that absence signals. Min 150 words.",\n'
-        '  "risk_scenarios": "Rich markdown. THREE scenarios: ## Bull Case, ## Base Case, ## Bear Case. For each: 2-3 sentences on what drives it and the price implication.",\n'
+        '  "executive_summary": "3-5 sentence investment verdict.",\n'
+        '  "verdict": {"action": "BUY", "confidence": 72, "horizon": "12 months"},\n'
+        '  "recommended_action": "Full sentence elaborating the verdict.",\n'
+        '  "financial_deep_dive": "Rich markdown analysis, min 200 words.",\n'
+        '  "news_impact_analysis": "Rich markdown analysis, min 150 words.",\n'
+        '  "risk_scenarios": "Rich markdown with ## Bull Case, ## Base Case, ## Bear Case.",\n'
         '  "charts": [\n'
-        '    {"chart_type": "bar", "labels": [...], "values": [...], "title": "Valuation Multiples"},\n'
-        '    {"chart_type": "bar", "labels": [...], "values": [...], "title": "Profitability Metrics"},\n'
-        '    {"chart_type": "bar", "labels": [...], "values": [...], "title": "Growth Indicators"}\n'
+        '    {"chart_type": "bar", "labels": ["P/E", "P/B", "EV/EBITDA"], "values": [28.5, 4.2, 18.1], "title": "Valuation Multiples"},\n'
+        '    {"chart_type": "bar", "labels": ["Gross Margin", "Op Margin", "Net Margin"], "values": [61.2, 29.8, 24.1], "title": "Profitability %"},\n'
+        '    {"chart_type": "bar", "labels": ["Revenue Growth", "Earnings Growth"], "values": [12.4, 18.7], "title": "Growth Rates %"}\n'
         "  ]\n"
         "}\n\n"
-        "For charts: produce 2-3 charts using ACTUAL numbers from the data. Each chart covers a different theme "
-        "(valuation multiples, profitability %, growth rates). Skip a chart if data is unavailable — minimum 1 chart required. "
-        "Use only numeric values, no strings. For verdict.confidence: 90+ = very high conviction, 70-89 = high, 50-69 = moderate, <50 = low."
+        "Rules for charts: replace example labels/values with ACTUAL numbers from the provided data. "
+        "All values must be numbers (no strings, no null). Skip a chart entirely if insufficient data exists — minimum 1 required. "
+        "verdict.action must be exactly one of: STRONG BUY, BUY, HOLD, REDUCE, SELL, STRONG SELL. "
+        "verdict.confidence is an integer 0-100."
     )
 
     trimmed = _trim_for_ai(data)
@@ -1247,6 +1268,7 @@ async def _run_ai_analysis(data: dict):
             try:
                 return parse_llm_json(content_str)
             except json.JSONDecodeError:
+                print(f"[AI Analysis] JSON parse failed. Raw response:\n{content_str[:1000]}")
                 return {"error": "LLM response was not valid JSON.", "raw": content_str}
         except Exception as e:
             return {"error": f"LLM API call failed: {str(e)}"}
