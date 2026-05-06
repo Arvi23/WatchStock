@@ -438,7 +438,7 @@ def fetch_financials(ticker: str):
         try:
             upg_df = stock.upgrades_downgrades
             if upg_df is not None and not upg_df.empty:
-                for date_idx, row in upg_df.head(6).iterrows():
+                for date_idx, row in upg_df.head(10).iterrows():
                     upgrades.append({
                         "date":       str(date_idx)[:10],
                         "firm":       str(row.get("Firm", "")),
@@ -455,7 +455,7 @@ def fetch_financials(ticker: str):
             ins_df = stock.insider_transactions
             if ins_df is not None and not ins_df.empty:
                 import math
-                for _, row in ins_df.head(6).iterrows():
+                for _, row in ins_df.head(10).iterrows():
                     shares = row.get("Shares")
                     value  = row.get("Value")
                     insider_txns.append({

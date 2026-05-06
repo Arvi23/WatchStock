@@ -821,6 +821,15 @@
         document.getElementById('scoreBreakdownPopover').style.display = 'none';
     }
 
+    function toggleExtra(id, btn) {
+        const el = document.getElementById(id);
+        if (!el) return;
+        const showing = el.style.display !== 'none';
+        el.style.display = showing ? 'none' : 'block';
+        const n = el.querySelectorAll('[style*="border-bottom"]').length || '';
+        btn.textContent = showing ? `SHOW ${n} MORE` : 'SHOW LESS';
+    }
+
     document.addEventListener('click', e => {
         const p = document.getElementById('scoreBreakdownPopover');
         if (p && p.style.display !== 'none' && !p.contains(e.target) && !e.target.closest('[data-score-key]'))
@@ -1145,7 +1154,8 @@
         forwardEps:       { label: 'EPS (Forward)',      desc: 'Analyst-estimated earnings per share for next 12 months.', format: v => v != null ? '$' + v.toFixed(2) : 'N/A' },
         debtToEquity:     { label: 'Debt / Equity',      desc: 'Total debt relative to shareholders equity. Lower = less leverage risk.', format: fmtNum(2) },
         freeCashflow:     { label: 'Free Cash Flow',     desc: 'Cash generated after capex. Positive = company funds itself without borrowing.', format: fmtB },
-        dividendYield:    { label: 'Dividend Yield',     desc: 'Annual dividend as % of current price.', format: fmtPct },
+        dividendYield:    { label: 'Dividend Yield',     desc: 'Annual dividend as % of current price.',
+                            format: v => v != null ? (v > 1 ? v.toFixed(2) : (v * 100).toFixed(2)) + '%' : 'N/A' },
         beta:             { label: 'Beta',               desc: 'Volatility vs the market. < 1.0 = defensive, > 1.5 = highly volatile.', format: fmtNum(2) },
         marketCap:        { label: 'Market Cap',         desc: 'Total market value of all outstanding shares.', format: fmtB },
     };
@@ -1272,17 +1282,23 @@
             </div>`;
         }
 
-        const upgradeList = (upgrades || []).slice(0, 5).map(u => {
-            const isUp = ['upgrade','initiated','reiterated'].includes((u.action||'').toLowerCase()) && ['buy','strong buy','outperform','overweight'].includes((u.to_grade||'').toLowerCase());
-            const isDown = (u.action||'').toLowerCase() === 'downgrade';
-            const arrow = isUp ? '<span style="color:#4caf50;">▲</span>' : isDown ? '<span style="color:#f44336;">▼</span>' : '·';
-            return `<div style="font-size:0.63rem; padding:3px 0; border-bottom:1px solid #1e1e1e; display:flex; gap:6px; align-items:center;">
-                <span>${arrow}</span>
-                <span style="color:#888; flex-shrink:0;">${u.date?.slice(0,10) || ''}</span>
-                <span style="color:#ccc; font-weight:600;">${u.firm || ''}</span>
-                <span style="color:#666;">${u.to_grade || ''}</span>
+        const ticker = currentRawData?.ticker_used || '';
+        const _ratingRow = u => {
+            const isUp   = (u.action||'').toLowerCase() === 'upgrade' || ['buy','strong buy','outperform','overweight','positive'].includes((u.to_grade||'').toLowerCase());
+            const isDown = (u.action||'').toLowerCase() === 'downgrade' || ['sell','underperform','underweight','negative'].includes((u.to_grade||'').toLowerCase());
+            const arrow  = isUp ? '<span style="color:#4caf50;">▲</span>' : isDown ? '<span style="color:#f44336;">▼</span>' : '<span style="color:#888;">·</span>';
+            const gradeColor = isUp ? '#4caf50' : isDown ? '#f44336' : '#888';
+            const searchUrl = `https://www.google.com/search?q=${encodeURIComponent((u.firm||'') + ' ' + ticker + ' ' + (u.to_grade||'') + ' analyst rating')}`;
+            return `<div style="font-size:0.63rem; padding:4px 0; border-bottom:1px solid #1e1e1e; display:flex; gap:6px; align-items:center;">
+                ${arrow}
+                <span style="color:#666; flex-shrink:0;">${u.date?.slice(0,10) || ''}</span>
+                <a href="${searchUrl}" target="_blank" rel="noopener" style="color:#a0a0a0; font-weight:600; text-decoration:none; flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" onmouseover="this.style.color='var(--accent)'" onmouseout="this.style.color='#a0a0a0'">${u.firm || ''}</a>
+                <span style="color:${gradeColor}; white-space:nowrap; flex-shrink:0;">${u.to_grade || ''}</span>
             </div>`;
-        }).join('');
+        };
+        const allUpgrades  = (upgrades || []);
+        const upgradeList  = allUpgrades.slice(0, 5).map(_ratingRow).join('');
+        const upgradeExtra = allUpgrades.slice(5).map(_ratingRow).join('');
 
         document.getElementById('analystData').innerHTML =
             `<div style="display:flex; align-items:center; gap:10px; margin-bottom:10px;">
@@ -1300,6 +1316,8 @@
             (upgradeList ? `<div style="margin-top:10px;">
                 <div style="font-size:0.55rem; letter-spacing:1.5px; color:#555; margin-bottom:6px;">RECENT RATINGS</div>
                 ${upgradeList}
+                ${upgradeExtra ? `<div id="ratingsExtra" style="display:none;">${upgradeExtra}</div>
+                <button onclick="toggleExtra('ratingsExtra',this)" style="width:100%; margin-top:6px; padding:4px; background:transparent; border:1px solid #333; color:#666; font-size:0.62rem; cursor:pointer; letter-spacing:1px;">SHOW ${allUpgrades.length - 5} MORE</button>` : ''}
             </div>` : '') +
             (aScore ? `<div style="margin-top:10px; padding:8px; background:#1a1a1a; border:1px solid #333; text-align:center;">
                 <div style="font-size:0.58rem; color:#888; margin-bottom:2px;">ANALYST SCORE</div>
@@ -1316,26 +1334,39 @@
 
         const flags = sScore?.flags || [];
 
-        const txnList = (insiderTxns || []).slice(0, 5).map(t => {
-            const isBuy = (t.transaction || '').toLowerCase().includes('purchase') || (t.transaction || '').toLowerCase().includes('buy');
-            const isSell = (t.transaction || '').toLowerCase().includes('sale') || (t.transaction || '').toLowerCase().includes('sell');
-            const color = isBuy ? '#4caf50' : isSell ? '#f44336' : '#888';
-            const arrow = isBuy ? '↑' : isSell ? '↓' : '·';
-            const val = t.value ? ' $' + (Math.abs(t.value) / 1e6).toFixed(1) + 'M' : '';
-            return `<div style="font-size:0.63rem; padding:4px 0; border-bottom:1px solid #1e1e1e; display:flex; gap:6px; align-items:flex-start;">
-                <span style="color:${color}; font-weight:700; flex-shrink:0; margin-top:1px;">${arrow}</span>
+        const _txnColor = t => {
+            const tx = (t.transaction || '').toLowerCase();
+            if (tx.includes('purchase') || tx.includes('buy') || tx.startsWith('p -') || tx.startsWith('p-')) return '#4caf50';
+            if (tx.includes('sale') || tx.includes('sell') || tx.startsWith('s -') || tx.startsWith('s-')) return '#f44336';
+            return '#888';
+        };
+        const _txnLabel = t => {
+            const tx = (t.transaction || '').toLowerCase();
+            if (tx.includes('purchase') || tx.includes('buy') || tx.startsWith('p')) return 'BUY';
+            if (tx.includes('sale') || tx.includes('sell') || tx.startsWith('s')) return 'SELL';
+            return t.transaction || '?';
+        };
+        const _txnRow = t => {
+            const color = _txnColor(t);
+            const label = _txnLabel(t);
+            const val   = t.value ? '$' + (Math.abs(t.value) / 1e6).toFixed(1) + 'M' : '';
+            return `<div style="font-size:0.63rem; padding:5px 0; border-bottom:1px solid #1e1e1e; display:flex; gap:8px; align-items:flex-start;">
+                <span style="font-size:0.6rem; font-weight:700; color:${color}; background:${color}18; border:1px solid ${color}44; padding:1px 5px; flex-shrink:0; margin-top:1px; letter-spacing:0.5px;">${label}</span>
                 <div style="flex:1; min-width:0;">
                     <div style="display:flex; justify-content:space-between; align-items:baseline; gap:4px;">
                         <span style="color:#ccc; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${t.insider || ''}</span>
-                        <span style="color:#666; white-space:nowrap; flex-shrink:0;">${val}</span>
+                        <span style="color:${color}; white-space:nowrap; flex-shrink:0; font-family:monospace; font-weight:600;">${val}</span>
                     </div>
-                    <div style="display:flex; justify-content:space-between; margin-top:1px;">
-                        ${t.title ? `<span style="font-size:0.58rem; color:#666; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${t.title}</span>` : ''}
-                        <span style="font-size:0.58rem; color:#555; flex-shrink:0; margin-left:auto;">${t.date?.slice(0,10) || ''}</span>
+                    <div style="display:flex; justify-content:space-between; margin-top:2px;">
+                        ${t.title ? `<span style="font-size:0.58rem; color:#666; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${t.title}</span>` : '<span></span>'}
+                        <span style="font-size:0.58rem; color:#555; flex-shrink:0;">${t.date?.slice(0,10) || ''}</span>
                     </div>
                 </div>
             </div>`;
-        }).join('');
+        };
+        const allTxns = (insiderTxns || []);
+        const txnList = allTxns.slice(0, 5).map(_txnRow).join('');
+        const txnExtra = allTxns.slice(5).map(_txnRow).join('');
 
         document.getElementById('smartMoneyData').innerHTML =
             metricRow('Insider Ownership',       ins  != null ? (ins  * 100).toFixed(1) + '%' : '—') +
@@ -1347,6 +1378,8 @@
             (txnList ? `<div style="margin-top:10px;">
                 <div style="font-size:0.55rem; letter-spacing:1.5px; color:#555; margin-bottom:6px;">RECENT INSIDER TRANSACTIONS</div>
                 ${txnList}
+                ${txnExtra ? `<div id="txnExtra" style="display:none;">${txnExtra}</div>
+                <button onclick="toggleExtra('txnExtra',this)" style="width:100%; margin-top:6px; padding:4px; background:transparent; border:1px solid #333; color:#666; font-size:0.62rem; cursor:pointer; letter-spacing:1px;">SHOW ${allTxns.length - 5} MORE</button>` : ''}
             </div>` : '') +
             (sScore ? `<div style="margin-top:10px; padding:8px; background:#1a1a1a; border:1px solid #333; text-align:center;">
                 <div style="font-size:0.58rem; color:#888; margin-bottom:2px;">SMART MONEY SCORE</div>
