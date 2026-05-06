@@ -1142,7 +1142,7 @@ async def _run_ai_analysis(data: dict):
     financial_deep_dive, news_impact_analysis, risk_scenarios, dynamic_ui_config.
     """
     api_key = get_setting("llm_api_key", OPENROUTER_API_KEY)
-    llm_model = get_setting("llm_model", "openai/gpt-4o-mini")
+    llm_model = get_setting("llm_model", "anthropic/claude-haiku-4-5")
     url = "https://openrouter.ai/api/v1/chat/completions"
     headers = {
         "Authorization": f"Bearer {api_key}",
@@ -1151,34 +1151,36 @@ async def _run_ai_analysis(data: dict):
     }
 
     system_prompt = (
-        "You are a Senior Sourcing Buyer Risk Analyst at a Fortune 500 procurement department. "
-        "You have been handed a full supplier dossier including live financial metrics and recent news signals. "
-        "Your job is to produce a DEEP, THOROUGH due diligence report that a procurement manager can act on.\n\n"
+        "You are a Senior Investment Research Analyst at a hedge fund. "
+        "You have been handed a full company profile including live financial metrics, valuation data, analyst consensus, and recent news signals. "
+        "Your job is to produce a deep, actionable investment research report.\n\n"
 
         "DATA AVAILABLE TO YOU:\n"
-        "- `financial_data.metrics`: live ratios (currentRatio, quickRatio, profitMargins, debtToEquity, beta, marketCap, currentPrice, revenueGrowth)\n"
-        "- `financial_data.key_officers`: leadership team\n"
-        "- `financial_data.risk_analysis`: pre-computed risk flags\n"
-        "- `health_scores`: short_term (liquidity & shock) and long_term (solvency & geo) scores 0-100\n"
-        "- `relevant_signals`: news articles with semantic relevance scores — THESE ARE CRITICAL\n\n"
+        "- `financial_data.metrics`: live ratios and valuation multiples (P/E, PEG, P/B, margins, debt/equity, beta, marketCap, EPS, revenue growth)\n"
+        "- `financial_data.analyst_data`: Wall Street consensus, price targets, recommendation rating\n"
+        "- `financial_data.key_officers`: management team\n"
+        "- `scores`: opportunity score, fundamental, analyst, valuation, smart money sub-scores (0-100)\n"
+        "- `health_scores`: short_term (liquidity) and long_term (solvency) scores 0-100\n"
+        "- `relevant_signals`: news articles with semantic relevance scores — factor these into your thesis\n\n"
 
         "INSTRUCTIONS:\n"
-        "1. DO NOT just list numbers. Interpret them. Explain what they MEAN for a buyer.\n"
-        "2. Connect news headlines directly to financial vulnerabilities — this is the core of your value.\n"
-        "3. Be specific: name metrics, cite headlines, quantify risks where possible.\n"
-        "4. Write all markdown fields in rich markdown (use ##, **bold**, bullet lists, > blockquotes for key warnings).\n\n"
+        "1. DO NOT just list numbers. Interpret them. Explain what they mean for an investor.\n"
+        "2. Connect news headlines to price catalysts and financial risks — this is the core of your value.\n"
+        "3. Be specific: cite metrics, reference headlines, quantify the investment case.\n"
+        "4. Consider valuation honestly — is it cheap or expensive relative to growth?\n"
+        "5. Write all markdown fields in rich markdown (##, **bold**, bullet lists, > blockquotes for key warnings).\n\n"
 
         "Return STRICT JSON with EXACTLY this structure (all fields required):\n"
         "{\n"
-        '  "executive_summary": "3-5 sentence overview for a busy executive. Verdict on supplier health.",\n'
-        '  "recommended_action": "Concrete single-sentence procurement recommendation (e.g. Proceed / Proceed with conditions / Escalate / Avoid).",\n'
-        '  "financial_deep_dive": "Rich markdown. Analyse each available metric in context. Compare to industry norms. Explain what high/low values mean for supply continuity. Min 200 words.",\n'
-        '  "news_impact_analysis": "Rich markdown. For each relevant news signal: cite the headline, explain the risk or opportunity it represents, and connect it to a specific financial metric. If no news, state why that itself may be a signal. Min 150 words.",\n'
-        '  "risk_scenarios": "Rich markdown. Describe THREE scenarios: ## Optimistic, ## Base Case, ## Pessimistic. For each: 2-3 sentences on what drives it and the procurement implication.",\n'
+        '  "executive_summary": "3-5 sentence investment verdict. Key strengths, risks, and overall stance.",\n'
+        '  "recommended_action": "Single-sentence recommendation: Strong Buy / Buy / Hold / Reduce / Sell — with brief rationale.",\n'
+        '  "financial_deep_dive": "Rich markdown. Analyse each available metric. What do the valuation multiples imply about market expectations? Compare to sector norms. Min 200 words.",\n'
+        '  "news_impact_analysis": "Rich markdown. For each relevant news signal: cite the headline, explain the investment implication, connect to a specific metric or price driver. If no news, note what that absence signals. Min 150 words.",\n'
+        '  "risk_scenarios": "Rich markdown. THREE scenarios: ## Bull Case, ## Base Case, ## Bear Case. For each: 2-3 sentences on what drives it and the price implication.",\n'
         '  "dynamic_ui_config": {"chart_type": "bar", "labels": [...], "values": [...], "title": "..."}\n'
         "}\n\n"
-        "For dynamic_ui_config: choose the 3-5 most telling metrics (use actual numeric values from the data). "
-        "Prefer metrics that tell the most risk-relevant story together."
+        "For dynamic_ui_config: choose the 3-5 most investment-relevant metrics. "
+        "Prefer valuation multiples, growth rates, and profitability metrics over liquidity ratios."
     )
 
     payload = {
@@ -1361,7 +1363,7 @@ async def force_update_supplier(request: Request):
     fresh_data = await _fetch_live_supplier_data(company_name, ticker)
 
     api_key = get_setting("llm_api_key", OPENROUTER_API_KEY)
-    llm_model = get_setting("llm_model", "openai/gpt-4o-mini")
+    llm_model = get_setting("llm_model", "anthropic/claude-haiku-4-5")
     url = "https://openrouter.ai/api/v1/chat/completions"
     headers = {
         "Authorization": f"Bearer {api_key}",
@@ -1371,19 +1373,20 @@ async def force_update_supplier(request: Request):
 
     if old_data:
         system_prompt = (
-            "You are a Sourcing Buyer Risk Analyst performing a DATA UPDATE. "
-            "Compare the NEW data with the PREVIOUS data and highlight all changes. "
-            "Mention specific metric changes (e.g. 'Short-term score changed from X to Y because...'). "
-            "If there are new news signals, highlight them. "
-            "If no significant changes, say 'No significant changes since last analysis'. "
-            'Return STRICT JSON: {"executive_summary": "text with diff highlights", '
-            '"recommended_action": "updated action", "changes_detected": true/false, '
+            "You are an Investment Research Analyst performing a DATA UPDATE. "
+            "Compare the NEW data with the PREVIOUS data and highlight all material changes. "
+            "Mention specific metric changes (e.g. 'Opportunity score moved from X to Y because...'). "
+            "If there are new news signals, explain their investment implications. "
+            "If no significant changes, say 'No material changes since last analysis'. "
+            'Return STRICT JSON: {"executive_summary": "update summary with key changes highlighted", '
+            '"recommended_action": "updated recommendation (Strong Buy/Buy/Hold/Reduce/Sell)", "changes_detected": true/false, '
             '"dynamic_ui_config": {"chart_type": "bar", "labels": [...], "values": [...], "title": "..."}}'
         )
         user_content = json.dumps(
             {
                 "previous_data": {
                     "health_scores": old_data.get("health_scores"),
+                    "scores": old_data.get("scores"),
                     "signal_metadata": old_data.get("signal_metadata"),
                     "ai_analysis": old_data.get("ai_analysis"),
                 },
@@ -1393,8 +1396,8 @@ async def force_update_supplier(request: Request):
         )
     else:
         system_prompt = (
-            "You are an expert Sourcing Buyer Risk Analyst. Analyze the supplier data provided. "
-            'Return STRICT JSON: {"executive_summary": "...", "recommended_action": "...", '
+            "You are a Senior Investment Research Analyst. Analyse the company data provided and give an investment verdict. "
+            'Return STRICT JSON: {"executive_summary": "...", "recommended_action": "Strong Buy/Buy/Hold/Reduce/Sell with rationale", '
             '"dynamic_ui_config": {"chart_type": "bar", "labels": [...], "values": [...], "title": "..."}}'
         )
         user_content = json.dumps(fresh_data, default=str)
@@ -1460,7 +1463,7 @@ async def chat_ai(request: Request):
         return {"error": "No question provided."}
 
     api_key = get_setting("llm_api_key", OPENROUTER_API_KEY)
-    llm_model = get_setting("llm_model", "openai/gpt-4o-mini")
+    llm_model = get_setting("llm_model", "anthropic/claude-haiku-4-5")
     url = "https://openrouter.ai/api/v1/chat/completions"
     headers = {
         "Authorization": f"Bearer {api_key}",
@@ -1474,8 +1477,8 @@ async def chat_ai(request: Request):
     )
 
     system_prompt = (
-        "You are an expert Sourcing Buyer Risk Analyst integrated into a live financial terminal. "
-        "You have FULL control over the terminal UI. The user has loaded supplier data (financial metrics, risk scores, news). "
+        "You are a Senior Investment Research Analyst integrated into a live stock analysis terminal. "
+        "You have FULL control over the terminal UI. The user has loaded company data (financial metrics, scores, news). "
         "You are the SAME analyst who generated the AI Analysis visible on screen.\n\n"
         "CURRENT COMPANY CONTEXT:\n" + context_str + "\n\n"
         "INSTRUCTIONS:\n"
@@ -1633,7 +1636,7 @@ async def settings_get():
         return {
             "llm_api_key": "***" if data.get("llm_api_key") else "",
             "llm_api_key_set": bool(data.get("llm_api_key")),
-            "llm_model": data.get("llm_model") or "openai/gpt-4o-mini",
+            "llm_model": data.get("llm_model") or "anthropic/claude-haiku-4-5",
             "news_api_key": "***" if data.get("news_api_key") else "",
             "news_api_key_set": bool(data.get("news_api_key")),
         }

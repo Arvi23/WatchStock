@@ -552,7 +552,7 @@
                     <label style="font-size:0.65rem; letter-spacing:1px; text-transform:uppercase; color:#888; display:block; margin-bottom:6px;">Model</label>
                     <input id="settingsLlmModel" type="text" placeholder="openai/gpt-4o-mini"
                         style="width:100%; background:#111; border:1px solid #2a2a2a; color:#e0e0e0; padding:8px 10px; font-size:0.78rem; font-family:monospace; outline:none; box-sizing:border-box;">
-                    <div style="font-size:0.62rem; color:#555; margin-top:4px;">e.g. &nbsp;openai/gpt-4o-mini &nbsp;·&nbsp; google/gemini-2.0-flash-001 &nbsp;·&nbsp; anthropic/claude-haiku-4-5</div>
+                    <div style="font-size:0.62rem; color:#555; margin-top:4px;">e.g. &nbsp;anthropic/claude-haiku-4-5 &nbsp;·&nbsp; google/gemini-2.0-flash-001 &nbsp;·&nbsp; openai/gpt-4o-mini</div>
                 </div>
 
                 <div style="margin-bottom:24px;">
@@ -1351,10 +1351,11 @@
             const isUnknown = label === '?' || label === '';
             const safeText  = (t.text || '').replace(/"/g, '&quot;').replace(/</g, '&lt;');
             const revealText = safeText || '<span style="color:#555;font-style:italic;">No description in data — try UPDATE DATA to refresh.</span>';
-            const pillHtml  = isUnknown
-                ? `<span onclick="var d=this.parentNode.querySelector('.txn-raw');d.style.display=d.style.display==='none'?'block':'none';"
-                       style="font-size:0.6rem; font-weight:700; color:#f5c518; background:#f5c51815; border:1px solid #f5c51840; padding:1px 6px; flex-shrink:0; margin-top:1px; cursor:pointer; letter-spacing:0.5px;" title="Click to read description">?</span>`
-                : `<span style="font-size:0.6rem; font-weight:700; color:${color}; background:${color}18; border:1px solid ${color}44; padding:1px 5px; flex-shrink:0; margin-top:1px; letter-spacing:0.5px;">${label}</span>`;
+            const pillStyle = `font-size:0.6rem; font-weight:700; padding:1px 6px; flex-shrink:0; margin-top:1px; cursor:pointer; letter-spacing:0.5px;`;
+            const pillColor = isUnknown ? '#f5c518' : color;
+            const pillHtml  = `<span onclick="var d=this.parentNode.querySelector('.txn-raw');d.style.display=d.style.display==='none'?'block':'none';"
+                       style="${pillStyle} color:${pillColor}; background:${pillColor}15; border:1px solid ${pillColor}40;"
+                       title="Click to read description">${isUnknown ? '?' : label}</span>`;
             return `<div style="font-size:0.63rem; padding:5px 0; border-bottom:1px solid #1e1e1e; display:flex; gap:8px; align-items:flex-start;">
                 ${pillHtml}
                 <div style="flex:1; min-width:0;">
@@ -1366,7 +1367,7 @@
                         ${t.title ? `<span style="font-size:0.58rem; color:#666; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${t.title}</span>` : '<span></span>'}
                         <span style="font-size:0.58rem; color:#555; flex-shrink:0;">${t.date?.slice(0,10) || ''}</span>
                     </div>
-                    ${isUnknown ? `<div class="txn-raw" style="display:none; font-size:0.62rem; color:#999; background:#161616; border:1px solid #2a2a2a; padding:5px 7px; margin-top:4px; line-height:1.5;">${revealText}</div>` : ''}
+                    <div class="txn-raw" style="display:none; font-size:0.62rem; color:#999; background:#161616; border:1px solid #2a2a2a; padding:5px 7px; margin-top:4px; line-height:1.5;">${revealText}</div>
                 </div>
             </div>`;
         };
