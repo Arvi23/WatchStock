@@ -458,11 +458,23 @@ def fetch_financials(ticker: str):
                 for _, row in ins_df.head(10).iterrows():
                     shares = row.get("Shares")
                     value  = row.get("Value")
+
+                    # Transaction type — column exists but is often NaN; fall back to Text field
+                    txn_raw = row.get("Transaction") or row.get("transaction") or ""
+                    if not txn_raw or str(txn_raw).lower() in ("nan", "none", ""):
+                        text_lower = str(row.get("Text", "") or "").lower()
+                        if any(k in text_lower for k in ("purchase", "acquired", "bought")):
+                            txn_raw = "Purchase"
+                        elif any(k in text_lower for k in ("sale", "sold", "disposed", "disposition")):
+                            txn_raw = "Sale"
+                        else:
+                            txn_raw = ""
+
                     insider_txns.append({
                         "date":        str(row.get("Start Date", row.get("Date", "")))[:10],
                         "insider":     str(row.get("Insider", "")),
                         "title":       str(row.get("Position", row.get("Title", ""))),
-                        "transaction": str(row.get("Transaction", "")),
+                        "transaction": str(txn_raw),
                         "shares": int(shares) if shares is not None and not (isinstance(shares, float) and math.isnan(shares)) else None,
                         "value":  int(value)  if value  is not None and not (isinstance(value,  float) and math.isnan(value))  else None,
                     })

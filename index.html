@@ -1334,17 +1334,15 @@
 
         const flags = sScore?.flags || [];
 
+        const _isBuy  = tx => /purchase|bought|acqui|open market p|\bp\b/i.test(tx);
+        const _isSell = tx => /sale|sold|dispos|\bs\b/i.test(tx);
         const _txnColor = t => {
-            const tx = (t.transaction || '').toLowerCase();
-            if (tx.includes('purchase') || tx.includes('buy') || tx.startsWith('p -') || tx.startsWith('p-')) return '#4caf50';
-            if (tx.includes('sale') || tx.includes('sell') || tx.startsWith('s -') || tx.startsWith('s-')) return '#f44336';
-            return '#888';
+            const tx = t.transaction || '';
+            return _isBuy(tx) ? '#4caf50' : _isSell(tx) ? '#f44336' : '#888';
         };
         const _txnLabel = t => {
-            const tx = (t.transaction || '').toLowerCase();
-            if (tx.includes('purchase') || tx.includes('buy') || tx.startsWith('p')) return 'BUY';
-            if (tx.includes('sale') || tx.includes('sell') || tx.startsWith('s')) return 'SELL';
-            return t.transaction || '?';
+            const tx = t.transaction || '';
+            return _isBuy(tx) ? 'BUY' : _isSell(tx) ? 'SELL' : (tx || '?');
         };
         const _txnRow = t => {
             const color = _txnColor(t);
