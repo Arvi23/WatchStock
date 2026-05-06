@@ -378,10 +378,52 @@
                 </div>
 
                 <!-- TAB: Finance -->
-                <div id="tab-finance" class="tab-content prose w-full pb-40 px-8">
-                    <div id="tradingViewContainer" style="width:100%; height:400px; border:1px solid #333; margin-bottom:24px; background:#131722; display:none;"></div>
-                    <div id="metricCards" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(220px, 1fr)); gap:12px; margin-bottom:24px;"></div>
-                    <div id="financeContent" class="w-full"></div>
+                <div id="tab-finance" class="tab-content w-full" style="padding:0; padding-bottom:80px;">
+
+                    <!-- TradingView chart -->
+                    <div id="tradingViewContainer" style="width:100%; height:380px; border-bottom:1px solid var(--border-color); background:#131722; display:none;"></div>
+
+                    <!-- Opportunity Score banner -->
+                    <div id="opportunityBanner" style="display:none; padding:20px 28px; border-bottom:1px solid var(--border-color); background:#161616;">
+                        <div style="display:flex; align-items:center; gap:32px; flex-wrap:wrap;">
+                            <div style="flex-shrink:0; text-align:center; min-width:100px;">
+                                <div style="font-size:0.58rem; letter-spacing:2px; color:var(--text-muted); margin-bottom:6px;">OPPORTUNITY SCORE</div>
+                                <div id="oppScoreNum" style="font-size:3.2rem; font-weight:800; font-family:monospace; line-height:1;">--</div>
+                                <div id="oppScoreLabel" style="font-size:0.7rem; letter-spacing:1px; margin-top:5px; font-weight:600;">--</div>
+                            </div>
+                            <div style="flex:1; min-width:220px;">
+                                <div style="height:5px; background:#2a2a2a; border-radius:3px; overflow:hidden; margin-bottom:18px;">
+                                    <div id="oppScoreBar" style="height:100%; width:0%; border-radius:3px; transition:width 1s ease;"></div>
+                                </div>
+                                <div id="subScoresGrid" style="display:grid; grid-template-columns:repeat(4,1fr); gap:10px;"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Three-column: Valuation | Analyst | Smart Money -->
+                    <div style="display:grid; grid-template-columns:1fr 1fr 1fr; border-bottom:1px solid var(--border-color);">
+                        <div style="padding:20px 22px; border-right:1px solid var(--border-color);">
+                            <div style="font-size:0.58rem; letter-spacing:2px; color:var(--text-muted); margin-bottom:14px;">VALUATION</div>
+                            <div id="valuationData"></div>
+                        </div>
+                        <div style="padding:20px 22px; border-right:1px solid var(--border-color);">
+                            <div style="font-size:0.58rem; letter-spacing:2px; color:var(--text-muted); margin-bottom:14px;">ANALYST CONSENSUS</div>
+                            <div id="analystData"></div>
+                        </div>
+                        <div style="padding:20px 22px;">
+                            <div style="font-size:0.58rem; letter-spacing:2px; color:var(--text-muted); margin-bottom:14px;">SMART MONEY</div>
+                            <div id="smartMoneyData"></div>
+                        </div>
+                    </div>
+
+                    <!-- Fundamentals grid -->
+                    <div style="padding:20px 28px; border-bottom:1px solid var(--border-color);">
+                        <div style="font-size:0.58rem; letter-spacing:2px; color:var(--text-muted); margin-bottom:14px;">FUNDAMENTALS</div>
+                        <div id="metricCards" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(200px, 1fr)); gap:10px;"></div>
+                    </div>
+
+                    <!-- Hidden legacy div (agentic chat may reference it) -->
+                    <div id="financeContent" style="display:none;"></div>
                 </div>
 
                 <!-- TAB: News -->
@@ -1010,17 +1052,200 @@
         return titles;
     }
 
-    // --- Educational Metric Definitions ---
+    // --- Metric Definitions (Fundamentals cards) ---
+    const fmtPct  = v => v != null ? (v * 100).toFixed(1) + '%' : 'N/A';
+    const fmtB    = v => v != null ? '$' + (Math.abs(v) / 1e9).toFixed(2) + 'B' + (v < 0 ? ' ▼' : '') : 'N/A';
+    const fmtNum  = (d=2) => v => v?.toFixed(d) ?? 'N/A';
     const METRIC_DESCRIPTIONS = {
-        currentRatio: { label: 'Current Ratio', desc: 'Measures the company\'s ability to pay short-term debts with current assets. Above 1.0 means more assets than liabilities.', format: v => v?.toFixed(2) || 'N/A' },
-        quickRatio: { label: 'Quick Ratio', desc: 'Like Current Ratio but excludes inventory — a stricter liquidity test.', format: v => v?.toFixed(2) || 'N/A' },
-        revenueGrowth: { label: 'Revenue Growth', desc: 'Year-over-year revenue change. Positive means the company is growing its top line.', format: v => v != null ? (v * 100).toFixed(1) + '%' : 'N/A' },
-        profitMargins: { label: 'Profit Margins', desc: 'Percentage of revenue kept as profit after all expenses. Higher is healthier.', format: v => v != null ? (v * 100).toFixed(1) + '%' : 'N/A' },
-        debtToEquity: { label: 'Debt to Equity', desc: 'Total debt relative to shareholder equity. Lower means less leverage risk.', format: v => v?.toFixed(2) || 'N/A' },
-        freeCashflow: { label: 'Free Cash Flow', desc: 'Cash generated after capital expenditures. Positive means the company generates surplus cash.', format: v => v != null ? '$' + (v / 1e9).toFixed(2) + 'B' : 'N/A' },
-        beta: { label: 'Beta', desc: 'Stock volatility relative to the market. Below 1.0 = defensive, above 1.5 = highly volatile.', format: v => v?.toFixed(2) || 'N/A' },
-        marketCap: { label: 'Market Cap', desc: 'Total market value of all outstanding shares. Indicates company size and market confidence.', format: v => v != null ? '$' + (v / 1e9).toFixed(2) + 'B' : 'N/A' }
+        currentRatio:     { label: 'Current Ratio',      desc: 'Short-term assets vs liabilities. Above 1.0 means more assets than obligations.', format: fmtNum(2) },
+        quickRatio:       { label: 'Quick Ratio',        desc: 'Current ratio excluding inventory — stricter liquidity test.', format: fmtNum(2) },
+        profitMargins:    { label: 'Profit Margin',      desc: 'Net income as % of revenue. The higher, the more efficient the business.', format: fmtPct },
+        operatingMargins: { label: 'Operating Margin',   desc: 'Profit after operating costs but before interest/taxes.', format: fmtPct },
+        revenueGrowth:    { label: 'Revenue Growth',     desc: 'Year-over-year revenue change.', format: fmtPct },
+        earningsGrowth:   { label: 'Earnings Growth',    desc: 'Year-over-year earnings change.', format: fmtPct },
+        trailingEps:      { label: 'EPS (Trailing)',     desc: 'Earnings per share over the last 12 months.', format: v => v != null ? '$' + v.toFixed(2) : 'N/A' },
+        forwardEps:       { label: 'EPS (Forward)',      desc: 'Analyst-estimated earnings per share for next 12 months.', format: v => v != null ? '$' + v.toFixed(2) : 'N/A' },
+        debtToEquity:     { label: 'Debt / Equity',      desc: 'Total debt relative to shareholders equity. Lower = less leverage risk.', format: fmtNum(2) },
+        freeCashflow:     { label: 'Free Cash Flow',     desc: 'Cash generated after capex. Positive = company funds itself without borrowing.', format: fmtB },
+        dividendYield:    { label: 'Dividend Yield',     desc: 'Annual dividend as % of current price.', format: fmtPct },
+        beta:             { label: 'Beta',               desc: 'Volatility vs the market. < 1.0 = defensive, > 1.5 = highly volatile.', format: fmtNum(2) },
+        marketCap:        { label: 'Market Cap',         desc: 'Total market value of all outstanding shares.', format: fmtB },
     };
+
+    // --- Finance Tab Rendering Helpers ---
+
+    function scoreColor(s) {
+        return s >= 70 ? '#4caf50' : s >= 50 ? '#ffc107' : s >= 30 ? '#ff9800' : '#f44336';
+    }
+
+    function metricRow(label, value, note) {
+        return `<div style="display:flex; justify-content:space-between; align-items:baseline; padding:5px 0; border-bottom:1px solid #222;">
+            <span style="font-size:0.68rem; color:#a0a0a0;">${label}</span>
+            <span style="font-size:0.78rem; font-weight:600; font-family:monospace; color:#e0e0e0;">${value ?? '—'}${note ? `<span style="font-size:0.6rem; color:#666; margin-left:5px;">${note}</span>` : ''}</span>
+        </div>`;
+    }
+
+    function renderOpportunityScore(scores) {
+        if (!scores?.opportunity) return;
+        const opp  = scores.opportunity;
+        const sub  = opp.sub;
+        document.getElementById('opportunityBanner').style.display = 'block';
+        document.getElementById('oppScoreNum').textContent   = opp.score;
+        document.getElementById('oppScoreNum').style.color   = opp.color;
+        document.getElementById('oppScoreLabel').textContent = opp.label;
+        document.getElementById('oppScoreLabel').style.color = opp.color;
+        const bar = document.getElementById('oppScoreBar');
+        bar.style.width      = opp.score + '%';
+        bar.style.background = opp.color;
+
+        const labels = { fundamental: 'Fundamental', analyst: 'Analyst', valuation: 'Valuation', smart_money: 'Smart Money' };
+        const weights = { fundamental: '25%', analyst: '30%', valuation: '30%', smart_money: '15%' };
+        document.getElementById('subScoresGrid').innerHTML = Object.entries(sub).map(([k, v]) => `
+            <div style="text-align:center; padding:8px; background:#1e1e1e; border:1px solid #333;">
+                <div style="font-size:1.1rem; font-weight:700; font-family:monospace; color:${scoreColor(v)};">${v}</div>
+                <div style="font-size:0.58rem; color:#888; margin-top:3px; letter-spacing:0.5px;">${labels[k]}</div>
+                <div style="font-size:0.55rem; color:#555; margin-top:1px;">${weights[k]}</div>
+            </div>`).join('');
+    }
+
+    function renderValuationSection(metrics, vScore) {
+        if (!metrics) return;
+        const cur = metrics.currentPrice, h52 = metrics.fiftyTwoWeekHigh, l52 = metrics.fiftyTwoWeekLow;
+        const pos = (cur && h52 && l52 && h52 > l52) ? ((cur - l52) / (h52 - l52) * 100).toFixed(1) : null;
+        const upside = (metrics.targetMeanPrice && cur) ? (((metrics.targetMeanPrice - cur) / cur) * 100).toFixed(1) : null;
+
+        let rangeBar = '';
+        if (pos !== null) {
+            rangeBar = `<div style="margin:10px 0 4px;">
+                <div style="display:flex; justify-content:space-between; font-size:0.58rem; color:#666; margin-bottom:3px;">
+                    <span>52w Low $${l52?.toFixed(2)}</span><span>52w High $${h52?.toFixed(2)}</span>
+                </div>
+                <div style="height:4px; background:#333; border-radius:2px; position:relative;">
+                    <div style="position:absolute; top:-3px; width:10px; height:10px; border-radius:50%; background:var(--accent); left:calc(${pos}% - 5px);"></div>
+                </div>
+                <div style="font-size:0.6rem; color:#888; margin-top:6px;">${pos}% of 52-week range${vScore?.position_pct != null ? ' · ' + (pos < 30 ? 'near bottom ↓' : pos > 70 ? 'near peak ↑' : 'mid-range') : ''}</div>
+            </div>`;
+        }
+
+        document.getElementById('valuationData').innerHTML =
+            metricRow('Trailing P/E',  metrics.trailingPE?.toFixed(1))  +
+            metricRow('Forward P/E',   metrics.forwardPE?.toFixed(1),   metrics.forwardPE < metrics.trailingPE ? 'earnings growing ↑' : '') +
+            metricRow('PEG Ratio',     metrics.pegRatio?.toFixed(2),    metrics.pegRatio < 1 ? '< 1.0 = cheap for growth' : '') +
+            metricRow('Price / Book',  metrics.priceToBook?.toFixed(2)) +
+            metricRow('Price / Sales', metrics.priceToSalesTrailingTwelveMonths?.toFixed(2)) +
+            metricRow('EV / EBITDA',   metrics.enterpriseToEbitda?.toFixed(1)) +
+            rangeBar +
+            (vScore ? `<div style="margin-top:10px; padding:8px; background:#1a1a1a; border:1px solid #333; text-align:center;">
+                <div style="font-size:0.58rem; color:#888; margin-bottom:2px;">VALUATION SCORE</div>
+                <div style="font-size:1.3rem; font-weight:700; font-family:monospace; color:${scoreColor(vScore.score)};">${vScore.score}/100</div>
+            </div>` : '');
+    }
+
+    function renderAnalystSection(analystData, aScore, upgrades) {
+        if (!analystData) return;
+        const rec = analystData.recommendationKey || '';
+        const recLabels = { strongbuy: 'Strong Buy', buy: 'Buy', hold: 'Hold', underperform: 'Underperform', sell: 'Sell' };
+        const recColors = { strongbuy: '#4caf50', buy: '#8bc34a', hold: '#ffc107', underperform: '#ff9800', sell: '#f44336' };
+        const recKey    = rec.replace('_','').toLowerCase();
+        const recLabel  = recLabels[recKey] || rec;
+        const recColor  = recColors[recKey] || '#888';
+        const mean      = analystData.recommendationMean;
+        const tgt       = analystData.targetMeanPrice;
+        const tgtLow    = analystData.targetLowPrice;
+        const tgtHigh   = analystData.targetHighPrice;
+        const n         = analystData.numberOfAnalystOpinions;
+
+        // Bull/bear bar (1=all buy, 5=all sell)
+        const bullPct = mean ? Math.round((5 - mean) / 4 * 100) : 50;
+        const upside  = aScore?.upside_pct;
+
+        let tgtRange = '';
+        if (tgtLow && tgtHigh && tgt) {
+            const span = tgtHigh - tgtLow;
+            const meanPct = span > 0 ? ((tgt - tgtLow) / span * 100).toFixed(0) : 50;
+            tgtRange = `<div style="margin:10px 0;">
+                <div style="display:flex; justify-content:space-between; font-size:0.58rem; color:#666; margin-bottom:3px;">
+                    <span>Low $${tgtLow.toFixed(0)}</span><span style="color:#a0a0a0;">Mean $${tgt.toFixed(0)}</span><span>High $${tgtHigh.toFixed(0)}</span>
+                </div>
+                <div style="height:4px; background:#333; border-radius:2px; position:relative;">
+                    <div style="position:absolute; top:-3px; width:10px; height:10px; border-radius:50%; background:var(--accent); left:calc(${meanPct}% - 5px);"></div>
+                </div>
+            </div>`;
+        }
+
+        const upgradeList = (upgrades || []).slice(0, 5).map(u => {
+            const isUp = ['upgrade','initiated','reiterated'].includes((u.action||'').toLowerCase()) && ['buy','strong buy','outperform','overweight'].includes((u.to_grade||'').toLowerCase());
+            const isDown = (u.action||'').toLowerCase() === 'downgrade';
+            const arrow = isUp ? '<span style="color:#4caf50;">▲</span>' : isDown ? '<span style="color:#f44336;">▼</span>' : '·';
+            return `<div style="font-size:0.63rem; padding:3px 0; border-bottom:1px solid #1e1e1e; display:flex; gap:6px; align-items:center;">
+                <span>${arrow}</span>
+                <span style="color:#888; flex-shrink:0;">${u.date?.slice(0,10) || ''}</span>
+                <span style="color:#ccc; font-weight:600;">${u.firm || ''}</span>
+                <span style="color:#666;">${u.to_grade || ''}</span>
+            </div>`;
+        }).join('');
+
+        document.getElementById('analystData').innerHTML =
+            `<div style="display:flex; align-items:center; gap:10px; margin-bottom:10px;">
+                <span style="font-size:1.1rem; font-weight:800; color:${recColor}; letter-spacing:1px;">${recLabel || '—'}</span>
+                <span style="font-size:0.65rem; color:#666;">${n ? n + ' analysts' : ''}</span>
+            </div>` +
+            (mean ? `<div style="margin-bottom:10px;">
+                <div style="height:4px; background:#333; border-radius:2px; overflow:hidden;">
+                    <div style="height:100%; width:${bullPct}%; background:linear-gradient(to right,#4caf50,#ffc107);"></div>
+                </div>
+                <div style="display:flex; justify-content:space-between; font-size:0.55rem; color:#555; margin-top:2px;"><span>Sell</span><span>Buy</span></div>
+            </div>` : '') +
+            metricRow('Mean Target', tgt ? '$' + tgt.toFixed(2) : '—', upside != null ? `${upside > 0 ? '+' : ''}${upside}% upside` : '') +
+            tgtRange +
+            (upgradeList ? `<div style="margin-top:10px;">
+                <div style="font-size:0.55rem; letter-spacing:1.5px; color:#555; margin-bottom:6px;">RECENT RATINGS</div>
+                ${upgradeList}
+            </div>` : '') +
+            (aScore ? `<div style="margin-top:10px; padding:8px; background:#1a1a1a; border:1px solid #333; text-align:center;">
+                <div style="font-size:0.58rem; color:#888; margin-bottom:2px;">ANALYST SCORE</div>
+                <div style="font-size:1.3rem; font-weight:700; font-family:monospace; color:${scoreColor(aScore.score)};">${aScore.score}/100</div>
+            </div>` : '');
+    }
+
+    function renderSmartMoneySection(metrics, sScore, insiderTxns) {
+        if (!metrics) return;
+        const ins   = metrics.heldPercentInsiders;
+        const inst  = metrics.heldPercentInstitutions;
+        const short = metrics.shortPercentOfFloat;
+        const shortR = metrics.shortRatio;
+
+        const flags = sScore?.flags || [];
+
+        const txnList = (insiderTxns || []).slice(0, 5).map(t => {
+            const isBuy = (t.transaction || '').toLowerCase().includes('purchase') || (t.transaction || '').toLowerCase().includes('buy');
+            const isSell = (t.transaction || '').toLowerCase().includes('sale') || (t.transaction || '').toLowerCase().includes('sell');
+            const color = isBuy ? '#4caf50' : isSell ? '#f44336' : '#888';
+            const arrow = isBuy ? '↑' : isSell ? '↓' : '·';
+            const val = t.value ? ' $' + (Math.abs(t.value) / 1e6).toFixed(1) + 'M' : '';
+            return `<div style="font-size:0.63rem; padding:3px 0; border-bottom:1px solid #1e1e1e; display:flex; gap:6px; align-items:baseline;">
+                <span style="color:${color}; font-weight:700;">${arrow}</span>
+                <span style="color:#888; flex-shrink:0;">${t.date?.slice(0,10) || ''}</span>
+                <span style="color:#ccc; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1;">${t.insider || ''}</span>
+                <span style="color:#666; white-space:nowrap;">${val}</span>
+            </div>`;
+        }).join('');
+
+        document.getElementById('smartMoneyData').innerHTML =
+            metricRow('Insider Ownership',       ins  != null ? (ins  * 100).toFixed(1) + '%' : '—') +
+            metricRow('Institutional Ownership', inst != null ? (inst * 100).toFixed(1) + '%' : '—') +
+            metricRow('Short % of Float',        short != null ? (short * 100).toFixed(1) + '%' : '—',
+                short > 0.15 ? '⚠ high' : short > 0.10 ? 'elevated' : '') +
+            metricRow('Short Ratio (days)',      shortR?.toFixed(1)) +
+            (flags.length ? flags.map(f => `<div style="font-size:0.63rem; color:#ff9800; background:#1a1a1a; border:1px solid #333; padding:6px 8px; margin-top:6px; line-height:1.4;">⚠ ${f}</div>`).join('') : '') +
+            (txnList ? `<div style="margin-top:10px;">
+                <div style="font-size:0.55rem; letter-spacing:1.5px; color:#555; margin-bottom:6px;">RECENT INSIDER TRANSACTIONS</div>
+                ${txnList}
+            </div>` : '') +
+            (sScore ? `<div style="margin-top:10px; padding:8px; background:#1a1a1a; border:1px solid #333; text-align:center;">
+                <div style="font-size:0.58rem; color:#888; margin-bottom:2px;">SMART MONEY SCORE</div>
+                <div style="font-size:1.3rem; font-weight:700; font-family:monospace; color:${scoreColor(sScore.score)};">${sScore.score}/100</div>
+            </div>` : '');
 
     // --- Navigation History ---
     function addToNavHistory(company, ticker, safetyScore) {
@@ -1325,20 +1550,35 @@
 
         // --- Educational Metric Cards ---
         const metricCards = document.getElementById('metricCards');
+        // ---- Opportunity Score banner ----
+        renderOpportunityScore(data.scores);
+
+        // ---- Three-column deep dive ----
+        renderValuationSection(metrics, data.scores?.valuation);
+        renderAnalystSection(data.financial_data?.analyst_data, data.scores?.analyst, data.financial_data?.upgrades_downgrades);
+        renderSmartMoneySection(metrics, data.scores?.smart_money, data.financial_data?.insider_transactions);
+
+        // ---- Fundamentals metric cards ----
+        const metricCards = document.getElementById('metricCards');
         metricCards.innerHTML = '';
-        const cardKeys = ['currentRatio', 'quickRatio', 'revenueGrowth', 'profitMargins', 'debtToEquity', 'freeCashflow', 'beta', 'marketCap'];
+        const cardKeys = [
+            'currentRatio','quickRatio','profitMargins','operatingMargins',
+            'revenueGrowth','earningsGrowth','trailingEps','forwardEps',
+            'debtToEquity','freeCashflow','dividendYield','beta','marketCap'
+        ];
         cardKeys.forEach(key => {
             const def = METRIC_DESCRIPTIONS[key];
             if (!def) return;
             const val = metrics[key];
+            if (val == null) return;
             const card = document.createElement('div');
-            card.style.cssText = 'background:#1a1a1a; border:1px solid #333; padding:16px; transition: border-color 0.2s;';
+            card.style.cssText = 'background:#1a1a1a; border:1px solid #333; padding:14px 16px; transition:border-color 0.2s; cursor:default;';
             card.onmouseenter = () => card.style.borderColor = '#555';
             card.onmouseleave = () => card.style.borderColor = '#333';
             card.innerHTML = `
-                <div style="font-size:0.65rem; color:#888; text-transform:uppercase; letter-spacing:1px; margin-bottom:6px;">${def.label}</div>
-                <div style="font-size:1.3rem; font-weight:700; font-family:monospace; color:#fff; margin-bottom:8px;">${def.format(val)}</div>
-                <div style="font-size:0.72rem; color:var(--text-muted); line-height:1.4;">${def.desc}</div>
+                <div style="font-size:0.6rem; color:#888; text-transform:uppercase; letter-spacing:1px; margin-bottom:5px;">${def.label}</div>
+                <div style="font-size:1.25rem; font-weight:700; font-family:monospace; color:#fff; margin-bottom:7px;">${def.format(val)}</div>
+                <div style="font-size:0.68rem; color:var(--text-muted); line-height:1.4;">${def.desc}</div>
             `;
             metricCards.appendChild(card);
         });
@@ -1371,16 +1611,7 @@
             document.getElementById('companyLogoBox').style.boxShadow = `0 0 12px hsla(${glowHue}, 100%, 45%, 0.4)`;
         }
 
-        // Render Markdown content internally separated
-        // Finance Output
-        let finMd = `## Financial Health\n`;
-        if (data.health_scores) {
-            finMd += `### Short Term Risk Score: ${data.health_scores.short_term.score}/100\n`;
-            data.health_scores.short_term.breakdown.forEach(b => finMd += `- ${b.item}: **${b.impact}**\n`);
-            finMd += `\n### Long Term Risk Score: ${data.health_scores.long_term.score}/100\n`;
-            data.health_scores.long_term.breakdown.forEach(b => finMd += `- ${b.item}: **${b.impact}**\n`);
-        }
-        financeContent.innerHTML = marked.parse(finMd);
+        // financeContent kept hidden for agentic-chat tab injection compatibility
 
         // News Output — Card-based layout (no markdown, clean HTML)
         newsContent.innerHTML = '';

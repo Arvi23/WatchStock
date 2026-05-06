@@ -357,51 +357,129 @@ def calculate_financial_risk(metrics: dict):
 def fetch_financials(ticker: str):
     """
     Fetch live financial metrics from Yahoo Finance for a given ticker.
-    Also extracts top executives for branching news search and display.
+    Returns metrics, analyst data, insider/upgrade activity, and executives.
     """
     try:
         stock = yf.Ticker(ticker)
-        info = stock.info
+        info  = stock.info
 
         metrics = {
+            # Liquidity
             "currentRatio": info.get("currentRatio"),
-            "quickRatio": info.get("quickRatio"),
-            "revenueGrowth": info.get("revenueGrowth"),
-            "profitMargins": info.get("profitMargins"),
+            "quickRatio":   info.get("quickRatio"),
+            # Profitability
+            "revenueGrowth":   info.get("revenueGrowth"),
+            "profitMargins":   info.get("profitMargins"),
+            "operatingMargins":info.get("operatingMargins"),
+            "grossMargins":    info.get("grossMargins"),
+            "earningsGrowth":  info.get("earningsGrowth"),
+            "trailingEps":     info.get("trailingEps"),
+            "forwardEps":      info.get("forwardEps"),
+            # Solvency / cash
             "debtToEquity": info.get("debtToEquity"),
             "freeCashflow": info.get("freeCashflow"),
+            "totalRevenue": info.get("totalRevenue"),
+            "netIncomeToCommon": info.get("netIncomeToCommon"),
+            # Valuation
+            "trailingPE":   info.get("trailingPE"),
+            "forwardPE":    info.get("forwardPE"),
+            "pegRatio":     info.get("pegRatio"),
+            "priceToBook":  info.get("priceToBook"),
+            "priceToSalesTrailingTwelveMonths": info.get("priceToSalesTrailingTwelveMonths"),
+            "enterpriseToEbitda": info.get("enterpriseToEbitda"),
+            # Price / range
+            "currentPrice":         info.get("currentPrice") or info.get("regularMarketPrice"),
+            "fiftyTwoWeekHigh":     info.get("fiftyTwoWeekHigh"),
+            "fiftyTwoWeekLow":      info.get("fiftyTwoWeekLow"),
+            "fiftyDayAverage":      info.get("fiftyDayAverage"),
+            "twoHundredDayAverage": info.get("twoHundredDayAverage"),
             "marketCap": info.get("marketCap"),
-            "beta": info.get("beta"),
+            "beta":       info.get("beta"),
+            # Dividends
+            "dividendYield": info.get("dividendYield"),
+            "dividendRate":  info.get("dividendRate"),
+            "payoutRatio":   info.get("payoutRatio"),
+            # Smart money
+            "shortPercentOfFloat":    info.get("shortPercentOfFloat"),
+            "shortRatio":             info.get("shortRatio"),
+            "heldPercentInstitutions":info.get("heldPercentInstitutions"),
+            "heldPercentInsiders":    info.get("heldPercentInsiders"),
+            # Meta
             "country": info.get("country"),
-            "website": info.get("website"),
-            "currentPrice": info.get("currentPrice") or info.get("regularMarketPrice"),
+            "website":  info.get("website"),
+            "sector":   info.get("sector"),
+            "industry": info.get("industry"),
+        }
+
+        analyst_data = {
+            "recommendationMean":      info.get("recommendationMean"),
+            "recommendationKey":       info.get("recommendationKey"),
+            "numberOfAnalystOpinions": info.get("numberOfAnalystOpinions"),
+            "targetMeanPrice":         info.get("targetMeanPrice"),
+            "targetHighPrice":         info.get("targetHighPrice"),
+            "targetLowPrice":          info.get("targetLowPrice"),
+            "targetMedianPrice":       info.get("targetMedianPrice"),
         }
 
         risk_analysis = calculate_financial_risk(metrics)
 
-        officers_data = info.get("companyOfficers", [])
+        officers_data  = info.get("companyOfficers", [])
         top_executives = []
-        key_officers = []
-
-        for index, officer in enumerate(officers_data):
-            name = officer.get("name")
+        key_officers   = []
+        for i, officer in enumerate(officers_data):
+            name  = officer.get("name")
             title = officer.get("title")
             if name:
-                if index < 2:
-                    top_executives.append(name)
-                if index < 5:
-                    key_officers.append({"name": name, "title": title or "N/A"})
+                if i < 2: top_executives.append(name)
+                if i < 5: key_officers.append({"name": name, "title": title or "N/A"})
+
+        # Recent analyst upgrades/downgrades (last 6)
+        upgrades = []
+        try:
+            upg_df = stock.upgrades_downgrades
+            if upg_df is not None and not upg_df.empty:
+                for date_idx, row in upg_df.head(6).iterrows():
+                    upgrades.append({
+                        "date":       str(date_idx)[:10],
+                        "firm":       str(row.get("Firm", "")),
+                        "from_grade": str(row.get("FromGrade", "")),
+                        "to_grade":   str(row.get("ToGrade", "")),
+                        "action":     str(row.get("Action", "")),
+                    })
+        except Exception:
+            pass
+
+        # Recent insider transactions (last 6)
+        insider_txns = []
+        try:
+            ins_df = stock.insider_transactions
+            if ins_df is not None and not ins_df.empty:
+                import math
+                for _, row in ins_df.head(6).iterrows():
+                    shares = row.get("Shares")
+                    value  = row.get("Value")
+                    insider_txns.append({
+                        "date":        str(row.get("Start Date", row.get("Date", "")))[:10],
+                        "insider":     str(row.get("Insider", "")),
+                        "title":       str(row.get("Position", row.get("Title", ""))),
+                        "transaction": str(row.get("Transaction", "")),
+                        "shares": int(shares) if shares is not None and not (isinstance(shares, float) and math.isnan(shares)) else None,
+                        "value":  int(value)  if value  is not None and not (isinstance(value,  float) and math.isnan(value))  else None,
+                    })
+        except Exception:
+            pass
 
         return {
-            "metrics": metrics,
-            "risk_analysis": risk_analysis,
-            "top_executives": top_executives,
-            "key_officers": key_officers,
+            "metrics":               metrics,
+            "analyst_data":          analyst_data,
+            "risk_analysis":         risk_analysis,
+            "top_executives":        top_executives,
+            "key_officers":          key_officers,
+            "upgrades_downgrades":   upgrades,
+            "insider_transactions":  insider_txns,
         }
     except Exception as e:
-        return {
-            "error": f"Could not fetch financial data for ticker {ticker}: {str(e)}"
-        }
+        return {"error": f"Could not fetch financial data for ticker {ticker}: {str(e)}"}
 
 
 COMPANY_TICKER_MAP = {
@@ -437,6 +515,154 @@ def norm_de(val):
 
 def norm_beta(val):
     return max(0, min(100, 100 - ((val - 0.5) * 50)))
+
+
+def _weighted(components: list) -> float:
+    total_w = sum(w for _, _, w in components)
+    return sum(s * (w / total_w) for _, s, w in components) if total_w > 0 else 50.0
+
+
+def score_fundamental(metrics: dict) -> dict:
+    """Liquidity, profitability, and solvency — 0-100."""
+    comps = []
+    cr = metrics.get("currentRatio")
+    if cr is not None: comps.append(("Current Ratio",    norm_cr(cr),     0.20))
+    qr = metrics.get("quickRatio")
+    if qr is not None: comps.append(("Quick Ratio",      norm_qr(qr),     0.15))
+    pm = metrics.get("profitMargins")
+    if pm is not None: comps.append(("Profit Margins",   norm_margin(pm), 0.20))
+    rg = metrics.get("revenueGrowth")
+    if rg is not None:
+        comps.append(("Revenue Growth", max(0, min(100, (rg + 0.2) / 0.5 * 100)), 0.15))
+    de = metrics.get("debtToEquity")
+    if de is not None: comps.append(("Debt/Equity",      norm_de(de),     0.15))
+    fcf = metrics.get("freeCashflow")
+    mc  = metrics.get("marketCap") or 1
+    if fcf is not None:
+        fcf_s = max(0, min(100, 50 + (fcf / mc) * 1000)) if mc > 0 else (60 if fcf > 0 else 30)
+        comps.append(("Free Cash Flow", fcf_s, 0.15))
+    eg = metrics.get("earningsGrowth")
+    if eg is not None:
+        comps.append(("Earnings Growth", max(0, min(100, 50 + eg * 150)), 0.10))
+    if not comps:
+        return {"score": 50, "breakdown": []}
+    score = round(_weighted(comps))
+    return {"score": score, "breakdown": [{"item": n, "score": round(s), "weight": f"{w*100:.0f}%"} for n, s, w in comps]}
+
+
+def score_analyst(metrics: dict, analyst_data: dict) -> dict:
+    """Analyst consensus and price-target upside — 0-100."""
+    rec  = analyst_data.get("recommendationMean")
+    n    = analyst_data.get("numberOfAnalystOpinions") or 0
+    tgt  = analyst_data.get("targetMeanPrice")
+    cur  = metrics.get("currentPrice")
+
+    if rec is None:
+        return {"score": 50, "breakdown": [], "upside_pct": None}
+
+    base       = max(0, min(100, (5 - rec) / 4 * 100))
+    confidence = 1.0 if n >= 8 else (0.75 if n >= 3 else 0.5)
+    score      = base * confidence
+
+    upside_pct = None
+    breakdown  = [{"item": f"Consensus: {(analyst_data.get('recommendationKey') or 'N/A').replace('_',' ').title()}", "score": round(base)}]
+    if tgt and cur and cur > 0:
+        upside_pct = round((tgt - cur) / cur * 100, 1)
+        delta = 10 if upside_pct > 30 else (5 if upside_pct > 10 else (-10 if upside_pct < 0 else 0))
+        score = max(0, min(100, score + delta))
+        breakdown.append({"item": f"Price-target upside: {upside_pct:+.1f}%", "impact": delta})
+    if n > 0:
+        breakdown.append({"item": f"{n} analysts · {confidence*100:.0f}% confidence weight"})
+
+    return {"score": round(score), "breakdown": breakdown, "upside_pct": upside_pct}
+
+
+def score_valuation(metrics: dict) -> dict:
+    """How cheap/expensive the stock is relative to earnings and history — 0-100 (higher = better value)."""
+    comps = []
+    pos_pct = None
+
+    pe = metrics.get("trailingPE")
+    if pe is not None and 0 < pe < 500:
+        pe_s = 90 if pe < 10 else 80 if pe < 15 else 68 if pe < 20 else 55 if pe < 25 else 40 if pe < 35 else 25 if pe < 50 else 12
+        comps.append(("Trailing P/E", pe_s, 0.25))
+    fpe = metrics.get("forwardPE")
+    if fpe is not None and 0 < fpe < 500:
+        fpe_s = 90 if fpe < 10 else 80 if fpe < 15 else 68 if fpe < 20 else 55 if fpe < 25 else 38 if fpe < 35 else 18
+        comps.append(("Forward P/E", fpe_s, 0.20))
+    peg = metrics.get("pegRatio")
+    if peg is not None and 0 < peg < 20:
+        peg_s = 95 if peg < 0.5 else 82 if peg < 1.0 else 65 if peg < 1.5 else 50 if peg < 2.0 else 32 if peg < 3.0 else 15
+        comps.append(("PEG Ratio", peg_s, 0.25))
+    high52 = metrics.get("fiftyTwoWeekHigh")
+    low52  = metrics.get("fiftyTwoWeekLow")
+    cur    = metrics.get("currentPrice")
+    if high52 and low52 and cur and high52 > low52:
+        pos_pct = round((cur - low52) / (high52 - low52) * 100, 1)
+        pos_s   = 85 if pos_pct < 20 else 72 if pos_pct < 40 else 55 if pos_pct < 60 else 38 if pos_pct < 80 else 20
+        comps.append(("52-Week Position", pos_s, 0.20))
+    pb = metrics.get("priceToBook")
+    if pb is not None and pb > 0:
+        pb_s = 88 if pb < 1 else 72 if pb < 2 else 58 if pb < 3 else 42 if pb < 5 else 22
+        comps.append(("Price/Book", pb_s, 0.10))
+
+    if not comps:
+        return {"score": 50, "breakdown": [], "position_pct": None}
+    score = round(_weighted(comps))
+    return {"score": score, "breakdown": [{"item": n, "score": round(s), "weight": f"{w*100:.0f}%"} for n, s, w in comps], "position_pct": pos_pct}
+
+
+def score_smart_money(metrics: dict) -> dict:
+    """Insider ownership, institutional positioning, short interest — 0-100."""
+    comps = []
+    flags = []
+
+    ins_pct = metrics.get("heldPercentInsiders")
+    if ins_pct is not None:
+        ins_s = 85 if ins_pct > 0.20 else 72 if ins_pct > 0.10 else 58 if ins_pct > 0.05 else 44 if ins_pct > 0.01 else 30
+        comps.append(("Insider Ownership", ins_s, 0.35))
+
+    inst_pct = metrics.get("heldPercentInstitutions")
+    if inst_pct is not None:
+        if inst_pct > 0.90:
+            inst_s = 40; flags.append("Heavily institutionally owned — crowded trade risk")
+        elif inst_pct > 0.80: inst_s = 55
+        elif inst_pct >= 0.50: inst_s = 72
+        elif inst_pct >= 0.20: inst_s = 60
+        else: inst_s = 52
+        comps.append(("Institutional Ownership", inst_s, 0.30))
+
+    short_pct = metrics.get("shortPercentOfFloat")
+    if short_pct is not None:
+        if short_pct > 0.20:
+            short_s = 22; flags.append(f"Very high short interest ({short_pct*100:.1f}%) — heavy bearish conviction or extreme squeeze candidate")
+        elif short_pct > 0.10:
+            short_s = 35; flags.append(f"High short interest ({short_pct*100:.1f}%) — watch for squeeze or continued selling")
+        elif short_pct > 0.05: short_s = 52
+        elif short_pct > 0.02: short_s = 62
+        else: short_s = 72
+        comps.append(("Short Interest", short_s, 0.35))
+
+    if not comps:
+        return {"score": 50, "breakdown": [], "flags": []}
+    score = round(_weighted(comps))
+    return {"score": score, "breakdown": [{"item": n, "score": round(s), "weight": f"{w*100:.0f}%"} for n, s, w in comps], "flags": flags}
+
+
+def calculate_opportunity_score(f: dict, a: dict, v: dict, s: dict) -> dict:
+    """Composite opportunity score from all four dimensions."""
+    score = round(f["score"] * 0.25 + a["score"] * 0.30 + v["score"] * 0.30 + s["score"] * 0.15)
+    label, color = (
+        ("Strong Opportunity", "#4caf50") if score >= 75 else
+        ("Moderate Opportunity", "#8bc34a") if score >= 60 else
+        ("Neutral",             "#ffc107") if score >= 45 else
+        ("Weak",                "#ff9800") if score >= 30 else
+        ("Avoid",               "#f44336")
+    )
+    return {
+        "score": score, "label": label, "color": color,
+        "sub": {"fundamental": f["score"], "analyst": a["score"], "valuation": v["score"], "smart_money": s["score"]},
+    }
 
 
 def get_geo_risk_penalty(country: str):
@@ -685,12 +911,13 @@ def db_get_company(ticker: str):
         conn.close()
 
 
-def db_save_company(ticker: str, company_name: str, financial_data: dict, health_scores: dict):
+def db_save_company(ticker: str, company_name: str, financial_data: dict, health_scores: dict, scores: dict = None):
     """Save or update a company record in the local database."""
     if not ticker:
         return
-    tk = ticker.upper()
-    metrics = financial_data.get("metrics", {})
+    tk           = ticker.upper()
+    metrics      = financial_data.get("metrics", {})
+    analyst_data = financial_data.get("analyst_data", {})
     key_officers = financial_data.get("key_officers", [])
 
     ceo = None
@@ -702,16 +929,15 @@ def db_save_company(ticker: str, company_name: str, financial_data: dict, health
     if not ceo and key_officers:
         ceo = key_officers[0].get("name")
 
+    # Store all metrics + analyst data + scores so DB hits are fully featured
     fin_doc = {
-        "currentRatio": metrics.get("currentRatio"),
-        "quickRatio": metrics.get("quickRatio"),
-        "profitMargins": metrics.get("profitMargins"),
-        "debtToEquity": metrics.get("debtToEquity"),
-        "beta": metrics.get("beta"),
-        "country": metrics.get("country"),
-        "marketCap": metrics.get("marketCap"),
+        **metrics,
+        "analyst_data":         analyst_data,
+        "upgrades_downgrades":  financial_data.get("upgrades_downgrades", []),
+        "insider_transactions": financial_data.get("insider_transactions", []),
+        "scores":    scores,
         "shortRisk": health_scores.get("short_term", {}).get("score") if health_scores else None,
-        "longRisk": health_scores.get("long_term", {}).get("score") if health_scores else None,
+        "longRisk":  health_scores.get("long_term",  {}).get("score") if health_scores else None,
         "stockPrice": metrics.get("currentPrice"),
         "ceo": ceo,
     }
@@ -733,14 +959,15 @@ def db_save_company(ticker: str, company_name: str, financial_data: dict, health
 
 async def save_to_databases(final_json_data: dict):
     """Save processed stock data to all tables: companies, signals, analysis."""
-    company_name = final_json_data.get("company_name", "")
-    ticker = final_json_data.get("ticker_used", "")
+    company_name     = final_json_data.get("company_name", "")
+    ticker           = final_json_data.get("ticker_used", "")
     relevant_signals = final_json_data.get("relevant_signals", [])
-    financial_data = final_json_data.get("financial_data", {})
-    health_scores = final_json_data.get("health_scores")
-    ai_analysis = final_json_data.get("ai_analysis")
+    financial_data   = final_json_data.get("financial_data", {})
+    health_scores    = final_json_data.get("health_scores")
+    scores           = final_json_data.get("scores")
+    ai_analysis      = final_json_data.get("ai_analysis")
 
-    db_save_company(ticker, company_name, financial_data, health_scores)
+    db_save_company(ticker, company_name, financial_data, health_scores, scores)
     db_save_signals(ticker, relevant_signals)
 
     if ai_analysis and ticker:
@@ -842,10 +1069,25 @@ async def _fetch_live_supplier_data(company_name: str, ticker: str):
             relevant_signals = [{"error": news_result["error"]}]
 
     health_scores = None
+    scores        = None
     company_domain = None
     if "error" not in financial_data:
-        metrics = financial_data.get("metrics", {})
+        metrics      = financial_data.get("metrics", {})
+        analyst_data = financial_data.get("analyst_data", {})
         health_scores = calculate_health_scores(metrics, relevant_signals)
+
+        # Multi-dimensional scores
+        f_score = score_fundamental(metrics)
+        a_score = score_analyst(metrics, analyst_data)
+        v_score = score_valuation(metrics)
+        s_score = score_smart_money(metrics)
+        scores  = {
+            "fundamental":  f_score,
+            "analyst":      a_score,
+            "valuation":    v_score,
+            "smart_money":  s_score,
+            "opportunity":  calculate_opportunity_score(f_score, a_score, v_score, s_score),
+        }
 
         raw_website = metrics.get("website")
         if raw_website:
@@ -855,16 +1097,17 @@ async def _fetch_live_supplier_data(company_name: str, ticker: str):
                 company_domain = None
 
     final_response = {
-        "company_name": company_name,
-        "ticker_used": ticker,
+        "company_name":   company_name,
+        "ticker_used":    ticker,
         "company_domain": company_domain,
-        "health_scores": health_scores,
+        "health_scores":  health_scores,
+        "scores":         scores,
         "financial_data": financial_data,
         "signal_metadata": {
-            "total_articles_fetched": total_fetched,
-            "relevant_articles_found": relevant_articles_found,
-            "dynamic_threshold_applied": dynamic_threshold,
-            "company_size_category": company_size_category,
+            "total_articles_fetched":   total_fetched,
+            "relevant_articles_found":  relevant_articles_found,
+            "dynamic_threshold_applied":dynamic_threshold,
+            "company_size_category":    company_size_category,
         },
         "relevant_signals": relevant_signals,
     }
@@ -1021,32 +1264,35 @@ async def get_supplier_data(
         if fin.get("ceo"):
             key_officers = [{"name": fin["ceo"], "title": "CEO"}]
 
+        # Reconstruct full metrics dict from stored flat fin_doc
+        # (all metric fields were stored directly via **metrics in db_save_company)
+        stored_metrics = {k: fin[k] for k in fin if k not in (
+            "analyst_data", "upgrades_downgrades", "insider_transactions",
+            "scores", "shortRisk", "longRisk", "stockPrice", "ceo"
+        )}
+        stored_metrics["currentPrice"] = fin.get("stockPrice") or stored_metrics.get("currentPrice")
+
         final_response = {
-            "company_name": db_doc.get("company_name", company_name),
-            "ticker_used": ticker,
+            "company_name":   db_doc.get("company_name", company_name),
+            "ticker_used":    ticker,
             "company_domain": None,
-            "health_scores": health_scores,
+            "health_scores":  health_scores,
+            "scores":         fin.get("scores"),
             "financial_data": {
-                "metrics": {
-                    "currentRatio": fin.get("currentRatio"),
-                    "quickRatio": fin.get("quickRatio"),
-                    "profitMargins": fin.get("profitMargins"),
-                    "debtToEquity": fin.get("debtToEquity"),
-                    "beta": fin.get("beta"),
-                    "country": fin.get("country"),
-                    "marketCap": fin.get("marketCap"),
-                    "currentPrice": fin.get("stockPrice"),
-                },
-                "key_officers": key_officers,
-                "risk_analysis": {},
+                "metrics":              stored_metrics,
+                "analyst_data":         fin.get("analyst_data", {}),
+                "upgrades_downgrades":  fin.get("upgrades_downgrades", []),
+                "insider_transactions": fin.get("insider_transactions", []),
+                "key_officers":         key_officers,
+                "risk_analysis":        {},
             },
             "signal_metadata": {
-                "total_articles_fetched": len(cached_signals),
+                "total_articles_fetched":  len(cached_signals),
                 "relevant_articles_found": len(cached_signals),
             },
             "relevant_signals": cached_signals,
-            "ai_analysis": saved_analysis,
-            "source": "database",
+            "ai_analysis":      saved_analysis,
+            "source":           "database",
         }
         cache_set(ticker, final_response)
         return final_response
