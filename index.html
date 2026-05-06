@@ -1348,8 +1348,14 @@
             const color = _txnColor(t);
             const label = _txnLabel(t);
             const val   = t.value ? '$' + (Math.abs(t.value) / 1e6).toFixed(1) + 'M' : '';
+            const isUnknown = label === '?' || label === '';
+            const safeText  = (t.text || '').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+            const pillHtml  = isUnknown && safeText
+                ? `<span onclick="var d=this.parentNode.querySelector('.txn-raw');d.style.display=d.style.display==='none'?'block':'none'"
+                       style="font-size:0.6rem; font-weight:700; color:#f5c518; background:#f5c51815; border:1px solid #f5c51840; padding:1px 6px; flex-shrink:0; margin-top:1px; cursor:pointer; letter-spacing:0.5px;" title="Click to read description">?</span>`
+                : `<span style="font-size:0.6rem; font-weight:700; color:${color}; background:${color}18; border:1px solid ${color}44; padding:1px 5px; flex-shrink:0; margin-top:1px; letter-spacing:0.5px;">${label}</span>`;
             return `<div style="font-size:0.63rem; padding:5px 0; border-bottom:1px solid #1e1e1e; display:flex; gap:8px; align-items:flex-start;">
-                <span style="font-size:0.6rem; font-weight:700; color:${color}; background:${color}18; border:1px solid ${color}44; padding:1px 5px; flex-shrink:0; margin-top:1px; letter-spacing:0.5px;">${label}</span>
+                ${pillHtml}
                 <div style="flex:1; min-width:0;">
                     <div style="display:flex; justify-content:space-between; align-items:baseline; gap:4px;">
                         <span style="color:#ccc; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${t.insider || ''}</span>
@@ -1359,6 +1365,7 @@
                         ${t.title ? `<span style="font-size:0.58rem; color:#666; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${t.title}</span>` : '<span></span>'}
                         <span style="font-size:0.58rem; color:#555; flex-shrink:0;">${t.date?.slice(0,10) || ''}</span>
                     </div>
+                    ${isUnknown && safeText ? `<div class="txn-raw" style="display:none; font-size:0.62rem; color:#999; background:#161616; border:1px solid #2a2a2a; padding:5px 7px; margin-top:4px; line-height:1.5;">${safeText}</div>` : ''}
                 </div>
             </div>`;
         };

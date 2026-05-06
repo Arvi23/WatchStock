@@ -470,11 +470,13 @@ def fetch_financials(ticker: str):
                         else:
                             txn_raw = ""
 
+                    raw_text = str(row.get("Text", "") or "").strip()
                     insider_txns.append({
                         "date":        str(row.get("Start Date", row.get("Date", "")))[:10],
                         "insider":     str(row.get("Insider", "")),
                         "title":       str(row.get("Position", row.get("Title", ""))),
                         "transaction": str(txn_raw),
+                        "text":        raw_text if raw_text.lower() not in ("nan", "none", "") else "",
                         "shares": int(shares) if shares is not None and not (isinstance(shares, float) and math.isnan(shares)) else None,
                         "value":  int(value)  if value  is not None and not (isinstance(value,  float) and math.isnan(value))  else None,
                     })
