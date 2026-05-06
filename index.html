@@ -596,6 +596,15 @@
     </div>
 
 <script>
+    // Configure marked: all links open in new tab so they never navigate away from the SPA
+    marked.use({
+        renderer: {
+            link(href, title, text) {
+                return `<a href="${href}" target="_blank" rel="noopener noreferrer"${title ? ` title="${title}"` : ''}>${text}</a>`;
+            }
+        }
+    });
+
     // Constants & State
     const companyInput = document.getElementById('companyInput');
     const tickerInput = document.getElementById('tickerInput');

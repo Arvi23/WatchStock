@@ -16,6 +16,7 @@ Core capabilities:
 import asyncio
 import json
 import os
+import re
 import sqlite3
 import time
 from datetime import datetime
@@ -116,6 +117,15 @@ def get_db():
     conn = sqlite3.connect(DB_PATH, check_same_thread=False)
     conn.row_factory = sqlite3.Row
     return conn
+
+
+def parse_llm_json(text: str) -> dict:
+    """Parse LLM response to JSON, stripping markdown code fences if present (Claude does this)."""
+    text = text.strip()
+    # Strip ```json ... ``` or ``` ... ``` wrappers
+    text = re.sub(r'^```(?:json)?\s*', '', text)
+    text = re.sub(r'\s*```$', '', text.strip())
+    return json.loads(text.strip())
 
 
 def get_setting(key: str, default: str = "") -> str:
@@ -1201,7 +1211,7 @@ async def _run_ai_analysis(data: dict):
                 result.get("choices", [{}])[0].get("message", {}).get("content", "")
             )
             try:
-                return json.loads(content_str)
+                return parse_llm_json(content_str)
             except json.JSONDecodeError:
                 return {"error": "LLM response was not valid JSON.", "raw": content_str}
         except Exception as e:
@@ -1421,7 +1431,7 @@ async def force_update_supplier(request: Request):
                 result.get("choices", [{}])[0].get("message", {}).get("content", "")
             )
             try:
-                ai_result = json.loads(content_str)
+                ai_result = parse_llm_json(content_str)
             except json.JSONDecodeError:
                 ai_result = {"error": "Invalid JSON from LLM", "raw": content_str}
         except Exception as e:
@@ -1523,7 +1533,7 @@ async def chat_ai(request: Request):
                 result.get("choices", [{}])[0].get("message", {}).get("content", "")
             )
             try:
-                parsed = json.loads(content_str)
+                parsed = parse_llm_json(content_str)
                 return {
                     "reply_text": parsed.get("reply_text", content_str),
                     "ui_action": parsed.get("ui_action", None),
