@@ -1144,6 +1144,31 @@ async def _fetch_live_supplier_data(company_name: str, ticker: str):
 # =========================================================================
 
 
+def _trim_for_ai(data: dict) -> dict:
+    """Return a focused subset of company data for LLM context — strips embeddings,
+    insider transactions, and other noise that bloats the prompt unnecessarily."""
+    fin = data.get("financial_data", {})
+    signals = [
+        {k: v for k, v in s.items() if k != "embedding"}
+        for s in (data.get("relevant_signals") or [])[:15]
+        if isinstance(s, dict) and "error" not in s
+    ]
+    return {
+        "company_name":  data.get("company_name"),
+        "ticker":        data.get("ticker_used"),
+        "financial_data": {
+            "metrics":      fin.get("metrics", {}),
+            "analyst_data": fin.get("analyst_data", {}),
+            "key_officers": (fin.get("key_officers") or [])[:3],
+            "risk_analysis":fin.get("risk_analysis", {}),
+        },
+        "health_scores":    data.get("health_scores"),
+        "scores":           data.get("scores"),
+        "signal_metadata":  data.get("signal_metadata"),
+        "relevant_signals": signals,
+    }
+
+
 async def _run_ai_analysis(data: dict):
     """
     Send stock data to the configured LLM for a comprehensive analysis report.
@@ -1193,16 +1218,19 @@ async def _run_ai_analysis(data: dict):
         "Prefer valuation multiples, growth rates, and profitability metrics over liquidity ratios."
     )
 
+    trimmed = _trim_for_ai(data)
     payload = {
         "model": llm_model,
-        "response_format": {"type": "json_object"},
         "messages": [
             {"role": "system", "content": system_prompt},
-            {"role": "user", "content": json.dumps(data, default=str)},
+            {"role": "user", "content": json.dumps(trimmed, default=str)},
         ],
     }
+    # response_format json_object is OpenAI-specific; Anthropic models ignore/break on it
+    if not llm_model.startswith("anthropic/"):
+        payload["response_format"] = {"type": "json_object"}
 
-    async with httpx.AsyncClient(timeout=60.0) as client:
+    async with httpx.AsyncClient(timeout=90.0) as client:
         try:
             response = await client.post(url, headers=headers, json=payload)
             response.raise_for_status()
@@ -1410,19 +1438,20 @@ async def force_update_supplier(request: Request):
             'Return STRICT JSON: {"executive_summary": "...", "recommended_action": "Strong Buy/Buy/Hold/Reduce/Sell with rationale", '
             '"dynamic_ui_config": {"chart_type": "bar", "labels": [...], "values": [...], "title": "..."}}'
         )
-        user_content = json.dumps(fresh_data, default=str)
+        user_content = json.dumps(_trim_for_ai(fresh_data), default=str)
 
     payload = {
         "model": llm_model,
-        "response_format": {"type": "json_object"},
         "messages": [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_content},
         ],
     }
+    if not llm_model.startswith("anthropic/"):
+        payload["response_format"] = {"type": "json_object"}
 
     ai_result = {}
-    async with httpx.AsyncClient(timeout=60.0) as client:
+    async with httpx.AsyncClient(timeout=90.0) as client:
         try:
             response = await client.post(url, headers=headers, json=payload)
             response.raise_for_status()
@@ -1518,13 +1547,11 @@ async def chat_ai(request: Request):
         messages.append({"role": role, "content": msg.get("content", "")})
     messages.append({"role": "user", "content": user_question})
 
-    payload = {
-        "model": llm_model,
-        "response_format": {"type": "json_object"},
-        "messages": messages,
-    }
+    payload = {"model": llm_model, "messages": messages}
+    if not llm_model.startswith("anthropic/"):
+        payload["response_format"] = {"type": "json_object"}
 
-    async with httpx.AsyncClient(timeout=60.0) as client:
+    async with httpx.AsyncClient(timeout=90.0) as client:
         try:
             response = await client.post(url, headers=headers, json=payload)
             response.raise_for_status()
