@@ -455,9 +455,24 @@
                             <h4 class="text-xs font-bold uppercase tracking-widest mb-3" style="color: var(--accent)">Executive Summary</h4>
                             <p id="aiSummary" class="leading-relaxed text-[#e0e0e0] text-lg font-light"></p>
                         </div>
-                        <div class="pl-4 border-l-[3px]" style="border-left-color: var(--accent);">
-                            <h4 class="text-xs font-bold uppercase tracking-widest mb-3" style="color: var(--accent)">Model Recommendation</h4>
-                            <p id="aiAction" class="leading-relaxed font-semibold text-white"></p>
+                        <div id="verdictSection" class="pl-4 border-l-[3px]" style="border-left-color: var(--accent);">
+                            <h4 class="text-xs font-bold uppercase tracking-widest mb-4" style="color: var(--accent)">Recommendation</h4>
+                            <div class="flex items-start gap-6 flex-wrap">
+                                <span id="verdictBadge" class="px-5 py-2 text-xl font-black tracking-widest uppercase" style="border: 2px solid #444; color: #666;">—</span>
+                                <div class="flex flex-col gap-2 pt-1">
+                                    <div id="verdictConfidenceRow" class="hidden flex items-center gap-3">
+                                        <span class="text-xs font-mono" style="color: var(--text-muted)">CONVICTION</span>
+                                        <div class="w-32 h-1 bg-[#333]">
+                                            <div id="verdictConfidenceBar" class="h-1" style="background: var(--accent); width: 0%; transition: width 0.7s;"></div>
+                                        </div>
+                                        <span id="verdictConfidenceVal" class="text-xs font-mono" style="color: var(--text-muted)">0/100</span>
+                                    </div>
+                                    <div id="verdictHorizonRow" class="hidden">
+                                        <span id="verdictHorizon" class="text-xs px-3 py-1 border border-[#444] font-mono" style="color: var(--text-muted)"></span>
+                                    </div>
+                                </div>
+                            </div>
+                            <p id="aiAction" class="leading-relaxed text-[#a0a0a0] text-sm mt-4 font-light"></p>
                         </div>
                         <div id="financialDeepDiveSection" class="pl-4 border-l-[3px] hidden" style="border-left-color: #69db7c;">
                             <h4 class="text-xs font-bold uppercase tracking-widest mb-3" style="color: #69db7c">Financial Deep Dive</h4>
@@ -471,11 +486,11 @@
                             <h4 class="text-xs font-bold uppercase tracking-widest mb-3" style="color: #ffa94d">Risk Scenarios</h4>
                             <div id="riskScenariosContent" class="leading-relaxed text-[#e0e0e0] text-sm prose"></div>
                         </div>
-                        <div class="pl-4 border-l-[3px]" style="border-left-color: var(--accent);">
-                            <h4 class="text-xs font-bold uppercase tracking-widest mb-4" style="color: var(--accent)">Dynamic Metric Plot</h4>
-                            <div style="width: 100%; max-height: 280px; margin-top: 10px;">
-                                <canvas id="dynamicChart"></canvas>
+                        <div id="chartsSection" class="hidden">
+                            <div class="pl-4 border-l-[3px] mb-5" style="border-left-color: var(--accent);">
+                                <h4 class="text-xs font-bold uppercase tracking-widest" style="color: var(--accent)">Chart Analysis</h4>
                             </div>
+                            <div id="chartsGrid" class="grid gap-5" style="grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));"></div>
                         </div>
                     </div>
                 </div>
@@ -1633,7 +1648,18 @@
         aiResult.querySelectorAll('.mt-8').forEach(el => el.remove());
         aiResult.classList.add('hidden');
 
-        // Reset news impact
+        // Reset verdict badge to placeholder state
+        const verdictBadge = document.getElementById('verdictBadge');
+        if (verdictBadge) { verdictBadge.textContent = '—'; verdictBadge.style.borderColor = '#444'; verdictBadge.style.color = '#666'; verdictBadge.style.background = 'transparent'; }
+        document.getElementById('verdictConfidenceRow')?.classList.add('hidden');
+        document.getElementById('verdictHorizonRow')?.classList.add('hidden');
+
+        // Clear charts grid
+        const chartsGrid = document.getElementById('chartsGrid');
+        if (chartsGrid) { chartsGrid.querySelectorAll('canvas').forEach(c => { const ch = Chart.getChart(c); if (ch) ch.destroy(); }); chartsGrid.innerHTML = ''; }
+        document.getElementById('chartsSection')?.classList.add('hidden');
+
+        // Reset text sections
         document.getElementById('newsImpactSection')?.classList.add('hidden');
         document.getElementById('financialDeepDiveSection')?.classList.add('hidden');
         document.getElementById('riskScenariosSection')?.classList.add('hidden');
@@ -1818,12 +1844,54 @@
         }
     }
 
+    const VERDICT_COLORS = {
+        'STRONG BUY':  { border: '#52b788', color: '#52b788', bg: 'rgba(82,183,136,0.12)' },
+        'BUY':         { border: '#69db7c', color: '#69db7c', bg: 'rgba(105,219,124,0.12)' },
+        'HOLD':        { border: '#ffd43b', color: '#ffd43b', bg: 'rgba(255,212,59,0.12)'  },
+        'REDUCE':      { border: '#ff8c42', color: '#ff8c42', bg: 'rgba(255,140,66,0.12)'  },
+        'STRONG SELL': { border: '#ff4444', color: '#ff4444', bg: 'rgba(255,68,68,0.12)'   },
+        'SELL':        { border: '#ff6b6b', color: '#ff6b6b', bg: 'rgba(255,107,107,0.12)' },
+    };
+
     // --- Render AI Analysis (from cache or API) ---
     function renderAiAnalysis(aiData) {
         if (!aiData) return;
 
         aiSummary.innerText = aiData.executive_summary || "No summary provided.";
-        aiAction.innerText = aiData.recommended_action || "No action provided.";
+
+        // Verdict badge
+        const verdict = aiData.verdict || {};
+        const rawAction = (verdict.action || aiData.recommended_action || '').toUpperCase();
+        let colors = { border: '#444', color: '#666', bg: 'transparent' };
+        let badgeText = rawAction || '—';
+        for (const [key, val] of Object.entries(VERDICT_COLORS)) {
+            if (rawAction.includes(key)) { colors = val; badgeText = key; break; }
+        }
+        const verdictBadge = document.getElementById('verdictBadge');
+        verdictBadge.textContent = badgeText;
+        verdictBadge.style.borderColor = colors.border;
+        verdictBadge.style.color = colors.color;
+        verdictBadge.style.background = colors.bg;
+
+        const confRow = document.getElementById('verdictConfidenceRow');
+        if (verdict.confidence != null) {
+            document.getElementById('verdictConfidenceBar').style.background = colors.border;
+            document.getElementById('verdictConfidenceBar').style.width = verdict.confidence + '%';
+            document.getElementById('verdictConfidenceVal').textContent = verdict.confidence + '/100';
+            confRow.classList.remove('hidden');
+        } else {
+            confRow.classList.add('hidden');
+        }
+
+        const horizonRow = document.getElementById('verdictHorizonRow');
+        if (verdict.horizon) {
+            document.getElementById('verdictHorizon').textContent = verdict.horizon;
+            horizonRow.classList.remove('hidden');
+        } else {
+            horizonRow.classList.add('hidden');
+        }
+
+        aiAction.innerText = aiData.recommended_action || '';
 
         // Financial Deep Dive
         const deepDiveSection = document.getElementById('financialDeepDiveSection');
@@ -1854,13 +1922,36 @@
         } else {
             riskSection.classList.add('hidden');
         }
-        
-        // Draw Chart
-        if (aiData.dynamic_ui_config) {
-            if (dynamicChartInstance) dynamicChartInstance.destroy();
-            dynamicChartInstance = createChart('dynamicChart', aiData.dynamic_ui_config);
+
+        // Charts — support new `charts` array OR legacy `dynamic_ui_config`
+        const chartsSection = document.getElementById('chartsSection');
+        const chartsGrid = document.getElementById('chartsGrid');
+        const chartConfigs = aiData.charts || (aiData.dynamic_ui_config ? [aiData.dynamic_ui_config] : []);
+
+        chartsGrid.querySelectorAll('canvas').forEach(c => { const ch = Chart.getChart(c); if (ch) ch.destroy(); });
+        chartsGrid.innerHTML = '';
+        dynamicChartInstance = null;
+
+        if (chartConfigs.length > 0) {
+            chartConfigs.forEach((cfg, i) => {
+                const uid = 'aiChart_' + i;
+                const wrapper = document.createElement('div');
+                wrapper.className = 'bg-[#1a1a1a] border border-[#333] p-4';
+                const canvas = document.createElement('canvas');
+                canvas.id = uid;
+                canvas.style.maxHeight = '240px';
+                wrapper.appendChild(canvas);
+                chartsGrid.appendChild(wrapper);
+            });
+            chartConfigs.forEach((cfg, i) => {
+                const instance = createChart('aiChart_' + i, cfg);
+                if (i === 0) dynamicChartInstance = instance;
+            });
+            chartsSection.classList.remove('hidden');
+        } else {
+            chartsSection.classList.add('hidden');
         }
-        
+
         // Show the result panel, hide loading
         const aiLoading = document.getElementById('aiLoading');
         aiLoading.classList.add('hidden');

@@ -1208,14 +1208,20 @@ async def _run_ai_analysis(data: dict):
         "Return STRICT JSON with EXACTLY this structure (all fields required):\n"
         "{\n"
         '  "executive_summary": "3-5 sentence investment verdict. Key strengths, risks, and overall stance.",\n'
-        '  "recommended_action": "Single-sentence recommendation: Strong Buy / Buy / Hold / Reduce / Sell — with brief rationale.",\n'
+        '  "verdict": {"action": "STRONG BUY|BUY|HOLD|REDUCE|SELL|STRONG SELL", "confidence": <integer 0-100>, "horizon": "e.g. 12 months"},\n'
+        '  "recommended_action": "Full sentence elaborating the verdict with key supporting rationale.",\n'
         '  "financial_deep_dive": "Rich markdown. Analyse each available metric. What do the valuation multiples imply about market expectations? Compare to sector norms. Min 200 words.",\n'
         '  "news_impact_analysis": "Rich markdown. For each relevant news signal: cite the headline, explain the investment implication, connect to a specific metric or price driver. If no news, note what that absence signals. Min 150 words.",\n'
         '  "risk_scenarios": "Rich markdown. THREE scenarios: ## Bull Case, ## Base Case, ## Bear Case. For each: 2-3 sentences on what drives it and the price implication.",\n'
-        '  "dynamic_ui_config": {"chart_type": "bar", "labels": [...], "values": [...], "title": "..."}\n'
+        '  "charts": [\n'
+        '    {"chart_type": "bar", "labels": [...], "values": [...], "title": "Valuation Multiples"},\n'
+        '    {"chart_type": "bar", "labels": [...], "values": [...], "title": "Profitability Metrics"},\n'
+        '    {"chart_type": "bar", "labels": [...], "values": [...], "title": "Growth Indicators"}\n'
+        "  ]\n"
         "}\n\n"
-        "For dynamic_ui_config: choose the 3-5 most investment-relevant metrics. "
-        "Prefer valuation multiples, growth rates, and profitability metrics over liquidity ratios."
+        "For charts: produce 2-3 charts using ACTUAL numbers from the data. Each chart covers a different theme "
+        "(valuation multiples, profitability %, growth rates). Skip a chart if data is unavailable — minimum 1 chart required. "
+        "Use only numeric values, no strings. For verdict.confidence: 90+ = very high conviction, 70-89 = high, 50-69 = moderate, <50 = low."
     )
 
     trimmed = _trim_for_ai(data)
