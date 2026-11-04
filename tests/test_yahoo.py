@@ -66,3 +66,14 @@ def test_network_error_becomes_market_data_error(monkeypatch):
     monkeypatch.setattr(yahoo.yf, "Ticker", boom)
     with pytest.raises(yahoo.MarketDataError):
         yahoo.fetch_profile("MSFT")
+
+
+def test_dividend_yield_is_a_fraction(monkeypatch):
+    # Yahoo 2025+: dividendYield 0.88 means 0.88%
+    info = {"longName": "X", "currentPrice": 400.0, "dividendYield": 0.88, "dividendRate": 3.6}
+    monkeypatch.setattr(yahoo.yf, "Ticker", lambda t: _StubTicker(info))
+    assert yahoo.fetch_profile("X")["metrics"]["dividendYield"] == pytest.approx(0.009)
+
+    info = {"longName": "X", "currentPrice": 400.0, "dividendYield": 0.88}
+    monkeypatch.setattr(yahoo.yf, "Ticker", lambda t: _StubTicker(info))
+    assert yahoo.fetch_profile("X")["metrics"]["dividendYield"] == pytest.approx(0.0088)

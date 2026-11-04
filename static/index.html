@@ -292,15 +292,15 @@
                         <div class="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity" onclick="showScoreExplanation('short_term')">
                             <div id="sbStCircle" class="w-10 h-10 flex flex-shrink-0 items-center justify-center text-base font-bold bg-gray-800 border-2 border-gray-600 transition-transform hover:scale-110">--</div>
                             <div>
-                                <span class="block text-sm font-semibold">Short-Term Safety</span>
-                                <span class="text-xs" style="color: var(--text-muted)">Liquidity & Shock</span>
+                                <span class="block text-sm font-semibold">Liquidity</span>
+                                <span class="text-xs" style="color: var(--text-muted)">Short-term safety</span>
                             </div>
                         </div>
                         <div class="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity" onclick="showScoreExplanation('long_term')">
                             <div id="sbLtCircle" class="w-10 h-10 flex flex-shrink-0 items-center justify-center text-base font-bold bg-gray-800 border-2 border-gray-600 transition-transform hover:scale-110">--</div>
                             <div>
-                                <span class="block text-sm font-semibold">Long-Term Safety</span>
-                                <span class="text-xs" style="color: var(--text-muted)">Solvency & Geo</span>
+                                <span class="block text-sm font-semibold">Solvency</span>
+                                <span class="text-xs" style="color: var(--text-muted)">Debt &amp; volatility</span>
                             </div>
                         </div>
                     </div>
@@ -462,6 +462,10 @@
                             </div>
                             <p id="aiAction" class="leading-relaxed text-[#a0a0a0] text-sm mt-4 font-light"></p>
                         </div>
+                        <div id="changesSection" class="pl-4 border-l-[3px] hidden" style="border-left-color: #a78bfa;">
+                            <h4 class="text-xs font-bold uppercase tracking-widest mb-3" style="color: #a78bfa">Since the Last Report</h4>
+                            <div id="changesContent" class="leading-relaxed text-[#e0e0e0] text-sm prose"></div>
+                        </div>
                         <div id="financialDeepDiveSection" class="pl-4 border-l-[3px] hidden" style="border-left-color: #69db7c;">
                             <h4 class="text-xs font-bold uppercase tracking-widest mb-3" style="color: #69db7c">Financial Deep Dive</h4>
                             <div id="financialDeepDiveContent" class="leading-relaxed text-[#e0e0e0] text-sm prose"></div>
@@ -553,9 +557,9 @@
 
                 <div style="margin-bottom:14px;">
                     <label style="font-size:0.65rem; letter-spacing:1px; text-transform:uppercase; color:#888; display:block; margin-bottom:6px;">Model</label>
-                    <input id="settingsLlmModel" type="text" placeholder="anthropic/claude-haiku-4-5"
+                    <input id="settingsLlmModel" type="text" placeholder="nvidia/nemotron-3.5-super-vl:free"
                         style="width:100%; background:#111; border:1px solid #2a2a2a; color:#e0e0e0; padding:8px 10px; font-size:0.78rem; font-family:monospace; outline:none; box-sizing:border-box;">
-                    <div style="font-size:0.62rem; color:#555; margin-top:4px;">e.g. &nbsp;anthropic/claude-haiku-4-5 &nbsp;·&nbsp; google/gemini-2.0-flash-001 &nbsp;·&nbsp; openai/gpt-4o-mini</div>
+                    <div style="font-size:0.62rem; color:#555; margin-top:4px;">Any model id from openrouter.ai/models. Ids ending in <code>:free</code> cost nothing but are rate-limited.</div>
                 </div>
 
 <div style="margin-bottom:24px;"></div>
@@ -767,39 +771,37 @@
         document.getElementById('searchBtn').click();
     }
 
+    // ---- Score breakdowns ----
+    // Items with a score get a bar; items without one are explanations (skipped inputs, flags).
+    function renderBreakdownItems(items) {
+        return (items || []).map(item => {
+            if (item.score !== null && item.score !== undefined) {
+                const c = scoreColor(item.score);
+                return `<div style="margin-bottom:10px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:3px;">
+                        <span style="font-size:0.68rem; color:#a0a0a0; flex:1;">${esc(item.item)}</span>
+                        <span style="font-size:0.7rem; font-weight:700; font-family:monospace; color:${c}; margin-left:8px;">${item.score}<span style="font-size:0.55rem; color:#555;">/100</span></span>
+                        ${item.weight ? `<span style="font-size:0.55rem; color:#555; margin-left:6px;">${esc(item.weight)}</span>` : ''}
+                    </div>
+                    <div style="height:3px; background:#2a2a2a; border-radius:2px; overflow:hidden;">
+                        <div style="height:100%; width:${item.score}%; background:${c};"></div>
+                    </div>
+                </div>`;
+            }
+            return `<div style="font-size:0.63rem; color:#888; padding:4px 0; border-bottom:1px solid #222; line-height:1.4;">${esc(item.item)}${item.note ? `<span style="color:#555;"> · ${esc(item.note)}</span>` : ''}</div>`;
+        }).join('');
+    }
+
     // ---- Score Breakdown Popover ----
     function showScoreBreakdown(key, event) {
         event.stopPropagation();
         if (!currentRawData?.scores) return;
         const data    = currentRawData.scores[key];
         if (!data) return;
-        const labels  = { fundamental: 'FUNDAMENTAL', analyst: 'ANALYST', valuation: 'VALUATION', smart_money: 'SMART MONEY' };
-        document.getElementById('popoverTitle').textContent = (labels[key] || key.toUpperCase()) + ' — BREAKDOWN';
+        const comp = currentRawData.scores.opportunity?.components?.find(c => c.key === key);
+        document.getElementById('popoverTitle').textContent = (comp?.label || key).toUpperCase() + ' — BREAKDOWN';
 
-        let html = '';
-        (data.breakdown || []).forEach(item => {
-            const s = item.score;
-            if (s !== undefined) {
-                const c = scoreColor(s);
-                html += `<div style="margin-bottom:10px;">
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:3px;">
-                        <span style="font-size:0.68rem; color:#a0a0a0; flex:1;">${item.item}</span>
-                        <span style="font-size:0.7rem; font-weight:700; font-family:monospace; color:${c}; margin-left:8px;">${s}<span style="font-size:0.55rem; color:#555;">/100</span></span>
-                        ${item.weight ? `<span style="font-size:0.55rem; color:#555; margin-left:6px;">${item.weight}</span>` : ''}
-                    </div>
-                    <div style="height:3px; background:#2a2a2a; border-radius:2px; overflow:hidden;">
-                        <div style="height:100%; width:${s}%; background:${c}; transition:width 0.4s ease;"></div>
-                    </div>
-                </div>`;
-            } else if (item.impact !== undefined) {
-                const c = item.impact >= 0 ? '#4caf50' : '#f44336';
-                html += `<div style="font-size:0.65rem; color:#888; padding:3px 0; border-bottom:1px solid #222;">
-                    ${item.item} <span style="color:${c}; font-family:monospace; float:right;">${item.impact > 0 ? '+' : ''}${item.impact}</span>
-                </div>`;
-            } else {
-                html += `<div style="font-size:0.63rem; color:#666; padding:3px 0; border-bottom:1px solid #222;">${item.item || ''}</div>`;
-            }
-        });
+        let html = renderBreakdownItems(data.breakdown);
 
         if (key === 'smart_money' && data.flags?.length) {
             html += `<div style="margin-top:10px; padding-top:8px; border-top:1px solid #333;">`;
@@ -967,6 +969,7 @@
         if (llmModel) payload.llm_model   = llmModel;
         try {
             await api('/api/settings', { method: 'PUT', body: payload });
+            await refreshLlmStatus();
             closeSettings();
             showToast('Settings saved.');
         } catch(e) { showToast('Could not save settings: ' + e.message); }
@@ -1036,41 +1039,21 @@
     let searchHistory = [];
     loadUserHistory();
     loadWatchlist();
+    refreshLlmStatus();
     loadIndices();
     loadMarketMovers();
     loadMarketNews();
 
     // --- Score Explanation Modal ---
     function showScoreExplanation(type) {
-        if (!currentRawData?.health_scores) return;
-        const modal = document.getElementById('scoreModal');
-        const title = document.getElementById('scoreModalTitle');
-        const body = document.getElementById('scoreModalBody');
-
-        const data = type === 'short_term' ? currentRawData.health_scores.short_term : currentRawData.health_scores.long_term;
-        const label = type === 'short_term' ? 'Short-Term Safety' : 'Long-Term Safety';
-
-        title.innerText = `${label} — ${data.score}/100`;
-
-        let html = '';
-        let runningTotal = 0;
-        data.breakdown.forEach(b => {
-            const isPositive = b.impact >= 0;
-            const color = isPositive ? '#69db7c' : '#ff6b6b';
-            const sign = isPositive ? '+' : '';
-            runningTotal += b.impact;
-            html += `<div style="display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px solid #2a2a2a;">
-                <span style="color:#e0e0e0; font-size:0.85rem;">${b.item}</span>
-                <span style="color:${color}; font-weight:700; font-family:monospace; font-size:0.9rem; white-space:nowrap; margin-left:16px;">${sign}${b.impact}</span>
-            </div>`;
-        });
-        html += `<div style="display:flex; justify-content:space-between; align-items:center; padding:12px 0; margin-top:4px; border-top:2px solid #444;">
-            <span style="color:#fff; font-weight:700; font-size:0.9rem;">Final Score</span>
-            <span style="color:hsl(${data.score * 1.2}, 100%, 50%); font-weight:700; font-family:monospace; font-size:1.1rem;">${data.score}</span>
-        </div>`;
-
-        body.innerHTML = html;
-        modal.style.display = 'flex';
+        const safety = currentRawData?.safety;
+        if (!safety?.[type]) return;
+        const data = safety[type];
+        const label = type === 'short_term' ? 'Liquidity (short term)' : 'Solvency & Volatility (long term)';
+        document.getElementById('scoreModalTitle').innerText = `${label} — ${data.score}/100`;
+        document.getElementById('scoreModalBody').innerHTML = renderBreakdownItems(data.breakdown) +
+            `<div style="margin-top:14px; font-size:0.65rem; color:#666; line-height:1.5;">The score is the weighted average of the items with a bar. Lines without a bar explain what was skipped or flagged.</div>`;
+        document.getElementById('scoreModal').style.display = 'flex';
     }
 
     function closeScoreModal() {
@@ -1155,7 +1138,7 @@
         debtToEquity:     { label: 'Debt / Equity',      desc: 'Total debt relative to shareholders equity. Lower = less leverage risk.', format: fmtNum(2) },
         freeCashflow:     { label: 'Free Cash Flow',     desc: 'Cash generated after capex. Positive = company funds itself without borrowing.', format: fmtB },
         dividendYield:    { label: 'Dividend Yield',     desc: 'Annual dividend as % of current price.',
-                            format: v => v != null ? (v > 1 ? v.toFixed(2) : (v * 100).toFixed(2)) + '%' : 'N/A' },
+                            format: v => v != null ? (v * 100).toFixed(2) + '%' : 'N/A' },  // backend sends a fraction
         beta:             { label: 'Beta',               desc: 'Volatility vs the market. < 1.0 = defensive, > 1.5 = highly volatile.', format: fmtNum(2) },
         marketCap:        { label: 'Market Cap',         desc: 'Total market value of all outstanding shares.', format: fmtB },
     };
@@ -1193,8 +1176,7 @@
 
     function renderOpportunityScore(scores) {
         if (!scores?.opportunity) return;
-        const opp  = scores.opportunity;
-        const sub  = opp.sub;
+        const opp = scores.opportunity;
         document.getElementById('opportunityBanner').style.display = 'block';
         document.getElementById('oppScoreNum').textContent   = opp.score;
         document.getElementById('oppScoreNum').style.color   = opp.color;
@@ -1204,15 +1186,13 @@
         bar.style.width      = opp.score + '%';
         bar.style.background = opp.color;
 
-        const labels = { fundamental: 'Fundamental', analyst: 'Analyst', valuation: 'Valuation', smart_money: 'Smart Money' };
-        const weights = { fundamental: '25%', analyst: '30%', valuation: '30%', smart_money: '15%' };
-        document.getElementById('subScoresGrid').innerHTML = Object.entries(sub).map(([k, v]) => `
-            <div data-score-key="${k}" onclick="showScoreBreakdown('${k}', event)"
+        document.getElementById('subScoresGrid').innerHTML = (opp.components || []).map(c => `
+            <div data-score-key="${esc(c.key)}" onclick="showScoreBreakdown('${esc(c.key)}', event)"
                  style="text-align:center; padding:8px; background:#1e1e1e; border:1px solid #333; cursor:pointer; transition:border-color 0.15s;"
                  onmouseover="this.style.borderColor='#555'" onmouseout="this.style.borderColor='#333'">
-                <div style="font-size:1.1rem; font-weight:700; font-family:monospace; color:${scoreColor(v)};">${v}</div>
-                <div style="font-size:0.58rem; color:#888; margin-top:3px; letter-spacing:0.5px;">${labels[k]}</div>
-                <div style="font-size:0.55rem; color:#555; margin-top:1px;">${weights[k]}</div>
+                <div style="font-size:1.1rem; font-weight:700; font-family:monospace; color:${scoreColor(c.score)};">${c.score}</div>
+                <div style="font-size:0.58rem; color:#888; margin-top:3px; letter-spacing:0.5px;">${esc(c.label)}</div>
+                <div style="font-size:0.55rem; color:#555; margin-top:1px;">${esc(c.weight)}</div>
                 <div style="font-size:0.52rem; color:#444; margin-top:3px;">click for breakdown</div>
             </div>`).join('');
     }
@@ -1577,9 +1557,9 @@
         updateAsOf(data);
 
         let avgScore = null;
-        if (data.health_scores) {
-            const st = data.health_scores.short_term?.score || 0;
-            const lt = data.health_scores.long_term?.score || 0;
+        if (data.safety) {
+            const st = data.safety.short_term?.score || 0;
+            const lt = data.safety.long_term?.score || 0;
             avgScore = Math.round((st + lt) / 2);
         }
         addToNavHistory(data.company_name, data.ticker, avgScore);
@@ -1587,7 +1567,21 @@
 
         // Show the stored report if there is one; otherwise generate one in the background.
         if (data.ai_analysis) renderAiAnalysis(data.ai_analysis);
-        else requestAnalysis();
+        else if (llmConfigured) requestAnalysis();
+        else showNoKeyHint();
+    }
+
+    // Whether an OpenRouter key is saved. Without one we don't auto-request reports.
+    let llmConfigured = true;
+    async function refreshLlmStatus() {
+        try { llmConfigured = (await api('/api/settings')).llm_api_key_set; } catch (e) {}
+    }
+
+    function showNoKeyHint() {
+        document.getElementById('aiLoading').classList.add('hidden');
+        aiSummary.innerText = 'AI analysis is off. Add an OpenRouter API key in Settings (gear icon), then press "Request Synthesis".';
+        aiAction.innerText = '';
+        aiAnalysisResult.classList.remove('hidden');
     }
 
     function updateAsOf(data) {
@@ -1641,6 +1635,7 @@
         // Reset text sections
         document.getElementById('newsImpactSection')?.classList.add('hidden');
         document.getElementById('financialDeepDiveSection')?.classList.add('hidden');
+        document.getElementById('changesSection')?.classList.add('hidden');
         document.getElementById('riskScenariosSection')?.classList.add('hidden');
 
         // Build Sidebar
@@ -1696,7 +1691,7 @@
             tvScript.type = 'text/javascript';
             tvScript.async = true;
             tvScript.innerHTML = JSON.stringify({
-                "autosize": true, "symbol": data.ticker, "interval": "D",
+                "autosize": true, "symbol": data.tradingview_symbol || data.ticker, "interval": "D",
                 "timezone": "Etc/UTC", "theme": "dark", "style": "1",
                 "locale": "en", "allow_symbol_change": false,
                 "backgroundColor": "rgba(19, 23, 34, 1)",
@@ -1754,10 +1749,10 @@
         }
 
         // Sidebar Risk Badges
-        if (data.health_scores && !data.health_scores.error) {
+        if (data.safety) {
             sidebarRiskScores.classList.remove('hidden');
-            const st = data.health_scores.short_term.score;
-            const lt = data.health_scores.long_term.score;
+            const st = data.safety.short_term.score;
+            const lt = data.safety.long_term.score;
             sbStCircle.innerText = st;
             sbStCircle.style.color = `hsl(${st * 1.2}, 100%, 50%)`;
             sbStCircle.style.borderColor = `hsl(${st * 1.2}, 100%, 40%)`;
@@ -1851,6 +1846,15 @@
         }
 
         aiAction.innerText = aiData.recommended_action || '';
+
+        // What changed since the previous report (only when there was one)
+        const changesSection = document.getElementById('changesSection');
+        if (aiData.changes_since_last) {
+            document.getElementById('changesContent').innerHTML = marked.parse(aiData.changes_since_last);
+            changesSection.classList.remove('hidden');
+        } else {
+            changesSection.classList.add('hidden');
+        }
 
         // Financial Deep Dive
         const deepDiveSection = document.getElementById('financialDeepDiveSection');

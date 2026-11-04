@@ -4,8 +4,14 @@ Read this first. Update it at the end of every batch or before your context runs
 
 ## Context
 - Owner: Spartacus (GitHub `Arvi23`). End user: his dad, on Windows, non-technical,
-  manages a small portfolio. Owner delegated the project ("be in charge") and wants
-  progress reported in batches. **Don't touch the owner's computer**. Ask him to test.
+  manages a small portfolio, **mostly US stocks**. Owner delegated the project ("be in
+  charge") and wants progress reported in batches.
+- **Delivery:** the owner wants every batch copied straight into his local folder
+  `E:\WatchStock\WatchStock` (device file tools, `device_commit_files`) so he never has to run
+  git. Copy tracked files only; never touch its `data\`, `.venv\` or `.git\`. Don't use his
+  computer for anything else; ask him to test.
+- **Merging:** the environment blocks agents from merging their own PRs. Open the PR, get
+  CI green, and the owner merges (or stack the next batch on the open branch).
 - Dev sandbox can't reach Yahoo, OpenRouter or CDNs (PyPI + npm work). Verify against
   fakes and Playwright screenshots. Live behaviour goes in "Needs live testing" below.
 - The original review that motivated this plan: bugs list in the batch plan below.
@@ -24,14 +30,21 @@ Read this first. Update it at the end of every batch or before your context runs
       errors shown as toasts, news cards escaped, marked link renderer fixed (pulled forward from batch 3)
 - [x] `scripts/fake_server.py` for UI work without network
 
-### Batch 2 — Correct numbers
-- Analyst score: shrink toward 50 with few analysts instead of multiplying the score down
-- Currency mismatch (`financialCurrency` ≠ `currency`, e.g. TSM) in FCF yield and similar ratios
-- Dividend yield unit (Yahoo now returns percent): normalise in the provider
-- Merge the overlapping "health" and "opportunity" scores into one explained system; geo-risk becomes a flag, not a penalty
-- Valuation: loss-makers shouldn't skip P/E penalties; label the 52-week-low = "value" assumption
-- One analysis prompt (the old "force update" used a shallower one); LLM judges news materiality; "what changed since last analysis"
-- Chat: compact context, no duplicated question
+### Batch 2 — Correct numbers + owner feedback  *(branch `batch-2-numbers`, PR #2, stacked on #1)* ✅
+- [x] Analyst score shrinks toward 50 with few analysts (was multiplied down)
+- [x] Currency mismatch guard: FCF yield skipped when `financialCurrency` ≠ `currency`
+- [x] Dividend yield normalised to a fraction in the provider (Yahoo now sends percent)
+- [x] Scores restructured (D8): Opportunity = Quality/Valuation/Analyst/Smart money; Safety = Liquidity + Solvency;
+      no metric counted twice; geo-risk is a flag; D/E skipped for financials; uniform breakdown items
+- [x] Valuation: loss-makers scored low instead of skipped; 52-week position labelled "contrarian", weight 15%
+- [x] Report prompt gets the previous report and returns `changes_since_last` (new "Since the Last Report" section)
+- [x] Chat: compact context, no duplicated question (done in batch 1)
+- [x] Owner feedback: browser opened before the server was up on first run ("lost connection"), so it now waits
+      for `/api/health`; logs moved to `data/watchstock.log` (Windows QuickEdit freeze risk);
+      second launch just opens the browser; no API key → no auto-request, hint shown instead
+- [x] TradingView symbol mapping (`symbols.py`): `TLV.RO` → `BVB:TLV` etc. ("symbol doesn't exist" for BVB)
+- [x] Default model `nvidia/nemotron-3.5-super-vl:free` (owner's choice for trials); LLM timeout 150 s
+- [x] Snapshot `schema` version (D9): old cached snapshots are refetched, not rendered broken
 
 ### Batch 3 — Frontend cleanup
 - Split `static/index.html` into `index.html` + `css/` + `js/` ES modules
@@ -49,34 +62,36 @@ Read this first. Update it at the end of every batch or before your context runs
 - Industry peer comparison; thesis tracking ("why I bought" checked against new data)
 
 ## Status
-Batch 1 done; PR #1 green on CI (Ubuntu + Windows), **waiting for the owner to merge**
-(agents can't self-merge in this environment). Branch further batches off `main` after
-it's merged, or stack on `batch-1-foundation` if it isn't yet. Next: batch 2. Start with the analyst score + dividend unit + currency
-mismatch in `scoring.py`/`providers/yahoo.py`, updating `tests/test_scoring.py` as formulas change.
+Batches 1 and 2 done. PR #1 and PR #2 (stacked) green on CI and waiting for the owner to
+merge. Files copied to the owner's folder. Next: batch 3 (frontend cleanup).
 
-Batch 1 notes for the next agent:
-- Scoring formulas are deliberately unchanged from the hackathon (except: no news penalty).
-  `tests/test_scoring.py` pins current behaviour; batch 2 changes it on purpose.
+Notes for the next agent:
 - The chat still supports `update_tab_content` on the frontend (raw HTML). The backend
   prompt no longer offers it; remove the frontend handler in batch 3 with DOMPurify.
-- The Tailwind Play CDN, Chart.js and marked still load from CDNs (unpinned). Batch 3.
-  For screenshots in the sandbox: run `scripts/fake_server.py`, then `scripts/ui_smoke.js`
+- The Tailwind Play CDN, Chart.js and marked still load from CDNs (marked unpinned; the
+  link renderer uses the >=13 token API). Batch 3 vendors them into `static/vendor/`.
+- For screenshots in the sandbox: run `scripts/fake_server.py`, then `scripts/ui_smoke.js`
   (header explains how it serves CDN scripts from npm copies).
+- Money is still formatted with `$` everywhere in the frontend; statement values (FCF,
+  revenue) should use `financialCurrency`, prices `currency`. Batch 3.
 - The old hackathon DB (`watchstock.db` at repo root) is not migrated; the new DB is
-  `data/watchstock.db`. Nothing in the old one is worth keeping.
+  `data/watchstock.db`.
 
 ## Needs live testing (owner, on Windows)
-Batch 1:
-- [ ] Fresh folder → double-click `start.bat`: uv installs, Python downloads, browser opens
-- [ ] Home: indices, market news, movers populate (they use yfinance `Search`/`screen` now)
-- [ ] Search "Microsoft" → dashboard loads; News tab shows real headlines with dates
-- [ ] AI report generates automatically once a key is set; links inside it are clickable
-- [ ] REFRESH works; "data Xm ago" label updates
-- [ ] Watchlist star add/remove, prices show
-- [ ] A European/BVB ticker (e.g. `SAP.DE`, `TLV.RO`) loads without errors (currency still shows `$`; known)
+Batch 1 (owner tested 2026-11-04: works; BVB chart said "symbol doesn't exist" → fixed in batch 2;
+first run without key "froze / lost connection" → likely browser opened too early, fixed in batch 2):
+- [x] start.bat first run, search, news, AI report with the free nemotron model
+
+Batch 2:
+- [ ] First start after update: browser opens by itself once ready (no "can't connect" page)
+- [ ] Double-click start.bat again while running → just opens a tab
+- [ ] `TLV.RO` / `SNP.RO`: TradingView chart shows (if it says "only available on TradingView",
+      the free widget lacks BVB data and we'll need our own chart)
+- [ ] Remove the API key → search a stock → AI tab shows the "add a key" hint, nothing freezes
+- [ ] MSFT dividend yield shows ~0.8%, not 80%
+- [ ] Request a second report on the same stock → "Since the Last Report" section appears
+- [ ] If anything misbehaves: send `data\watchstock.log`
 
 ## Open questions for the owner
-- Does dad hold only US stocks, or also BVB (.RO) / European ones? Decides how early
-  currency support lands.
-- Default LLM model id on OpenRouter: code uses `anthropic/claude-haiku-4-5`
-  (worked during the hackathon); confirm or pick a newer one.
+- (answered) Dad holds mostly US stocks → currency formatting stays in batch 3, no rush.
+- (answered) Default model: `nvidia/nemotron-3.5-super-vl:free` for now.

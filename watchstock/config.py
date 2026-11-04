@@ -18,8 +18,9 @@ INDICES_TTL_SECONDS = 60
 MARKET_NEWS_TTL_SECONDS = 5 * 60
 MOVERS_TTL_SECONDS = 10 * 60
 
-DEFAULT_LLM_MODEL = "anthropic/claude-haiku-4-5"
-LLM_TIMEOUT_SECONDS = 90.0
+# Free model the owner chose for trials; any OpenRouter model id works (set in Settings).
+DEFAULT_LLM_MODEL = "nvidia/nemotron-3.5-super-vl:free"
+LLM_TIMEOUT_SECONDS = 150.0  # free OpenRouter endpoints can be slow
 
 
 def data_dir() -> Path:

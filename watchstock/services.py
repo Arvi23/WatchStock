@@ -9,11 +9,15 @@ from datetime import UTC, datetime
 from typing import Any
 from urllib.parse import urlparse
 
-from watchstock import config, scoring, store
+from watchstock import config, scoring, store, symbols
 from watchstock.providers import yahoo
 from watchstock.providers.yahoo import MarketDataError
 
 log = logging.getLogger(__name__)
+
+# Bump when the snapshot shape changes; older cached snapshots are then refetched
+# instead of being sent to a UI that no longer understands them.
+SNAPSHOT_SCHEMA = 2
 
 
 def normalize_ticker(ticker: str) -> str:
@@ -43,6 +47,7 @@ def build_snapshot(ticker: str, fallback_name: str = "") -> dict[str, Any]:
 
     metrics = profile["metrics"]
     return {
+        "schema": SNAPSHOT_SCHEMA,
         "ticker": ticker,
         "company_name": profile.get("name") or fallback_name or ticker,
         "company_domain": _domain(metrics.get("website")),
@@ -68,6 +73,8 @@ def get_stock(ticker: str, *, name: str = "", refresh: bool = False) -> dict[str
     """
     ticker = normalize_ticker(ticker)
     cached = store.get_snapshot(ticker)
+    if cached and cached["data"].get("schema") != SNAPSHOT_SCHEMA:
+        cached = None  # incompatible shape from an older version
     fresh_enough = cached and _age_seconds(cached["fetched_at"]) < config.SNAPSHOT_TTL_SECONDS
 
     if cached and fresh_enough and not refresh:
@@ -90,4 +97,5 @@ def get_stock(ticker: str, *, name: str = "", refresh: bool = False) -> dict[str
             stock = {**stock, "source": "live", "stale": False}
 
     stock["ai_analysis"] = store.latest_analysis(ticker)
+    stock["tradingview_symbol"] = symbols.tradingview_symbol(ticker)
     return stock

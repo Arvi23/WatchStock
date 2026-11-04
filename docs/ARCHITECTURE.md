@@ -10,7 +10,8 @@ watchstock/app.py            FastAPI app factory, error → 502 mapping, static 
    └── routes/personal.py    /api/watchlist, /api/settings
         │
         ├── services.py      snapshot freshness: cache hit / live fetch / stale fallback
-        ├── scoring.py       pure scoring functions → scores + breakdowns
+        ├── scoring.py       pure scoring functions → opportunity pillars + safety, with breakdowns
+        ├── symbols.py       Yahoo ↔ TradingView ticker translation
         ├── analysis.py      LLM prompts: report + chat (compact context)
         ├── store.py         every SQL query
         ├── db.py            connection + migrations (PRAGMA user_version)
@@ -50,12 +51,24 @@ call never blocks other requests.
     "upgrades_downgrades": [...], "insider_transactions": [...]
   },
   "news": [{"title", "url", "publisher", "published_at", "summary"}],
-  "health_scores": {"short_term": {...}, "long_term": {...}},
-  "scores": {"fundamental", "analyst", "valuation", "smart_money", "opportunity"},
-  "risk_analysis": {...},
-  "ai_analysis": null | {"executive_summary", "verdict", ..., "model", "created_at"}
+  "schema": 2,                       // services.SNAPSHOT_SCHEMA
+  "tradingview_symbol": "MSFT",      // e.g. "BVB:TLV" for TLV.RO
+  "scores": {
+    "quality" | "valuation" | "analyst" | "smart_money": {"score", "breakdown": [item]},
+    "opportunity": {"score", "label", "color", "components": [{"key","label","score","weight"}]}
+  },
+  "safety": {"short_term": {"score","breakdown"}, "long_term": {...}, "flags": [str]},
+  "risk_analysis": {...},            // plain-language red flags for the LLM
+  // breakdown item: {"item": str, "score": 0-100|null, "weight": "25%"|null, "note": str|null}
+  "ai_analysis": null | {"executive_summary", "verdict", ..., "changes_since_last", "model", "created_at"}
 }
 ```
+
+## Logging and startup
+
+`python -m watchstock` logs to `data/watchstock.log` (rotating, 1 MB × 3), opens the
+browser only once `/api/health` answers, and if an instance is already running just
+opens the browser. See D10.
 
 ## Database (`data/watchstock.db`)
 
