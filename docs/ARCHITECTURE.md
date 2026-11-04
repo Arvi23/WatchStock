@@ -1,7 +1,7 @@
 # Architecture
 
 ```
-Browser (static/index.html, vanilla JS)
+Browser (static/index.html + static/js/*.js, plain scripts, no build step)
    │  JSON over /api/*
    ▼
 watchstock/app.py            FastAPI app factory, error → 502 mapping, static files
@@ -20,6 +20,28 @@ watchstock/app.py            FastAPI app factory, error → 502 mapping, static 
              ├── yahoo.py       yfinance: profile, news, quotes, search, screeners
              └── openrouter.py  chat completions
 ```
+
+## Frontend (`static/`)
+
+| file | role |
+|---|---|
+| `index.html` | markup only; loads CSS, vendored libs, then `js/*.js` in order |
+| `css/tailwind.css` | precompiled Tailwind (generated from `tailwind.config.js`; `npm run build:css`) |
+| `css/app.css` | fonts, theme variables, component styles, markdown (`.prose`) styles |
+| `vendor/` | pinned Chart.js, marked, DOMPurify, Inter font (`npm run vendor`) |
+| `js/core.js` | `api()`, `esc()`, `renderMarkdown()`, money formatting, DOM handles, toast |
+| `js/charts.js` | Chart.js helpers |
+| `js/scores.js` | breakdown popover + safety modal |
+| `js/settings.js` | settings modal |
+| `js/home.js` | indices, market news, movers, watchlist, search history |
+| `js/dashboard.js` | sidebar, finance tab, metric cards, news tab |
+| `js/analysis.js` | AI report rendering/requesting, JSON export |
+| `js/chat.js` | chat panel and the UI actions the model may request |
+| `js/search.js` | layout, autocomplete, `executeSearch`/`loadStock`, refresh, overlay |
+| `js/main.js` | startup calls (runs last) |
+
+Classic scripts share one global scope (see D11). `scripts/ui_smoke.js` drives the real
+UI against `scripts/fake_server.py` in CI.
 
 ## Request flow: opening a stock
 

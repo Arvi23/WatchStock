@@ -51,6 +51,8 @@ uv sync
 uv run python -m watchstock          # run
 uv run pytest                        # tests, no network needed
 uv run python scripts/fake_server.py # UI with fake data on :8001
+npm ci && node scripts/ui_smoke.js   # browser test against the fake server
+npm run build                        # after changing vendored libs or Tailwind classes
 ```
 
 ## License

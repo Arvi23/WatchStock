@@ -67,3 +67,15 @@ cached snapshots in the old shape are refetched instead of breaking the UI.
 Windows console QuickEdit mode blocks any process writing to a console the user has
 clicked into, which looks like a freeze. Logs go to `data/watchstock.log`; the console only
 shows the startup banner. The browser opens after `/api/health` answers.
+
+## D11 — Frontend: split classic scripts, vendored libs, precompiled Tailwind (2026-11-04)
+The 2,400-line `index.html` is now `index.html` + `css/app.css` + ten files in `js/`.
+They're classic scripts sharing one global scope, not ES modules: the markup uses inline
+`onclick` handlers that need globals, and modules would mean rewriting every handler
+for no user-visible gain. Converting to modules later is mechanical if it's ever needed.
+Chart.js, marked, DOMPurify and the Inter font are vendored at pinned versions
+(`package.json`, `scripts/vendor.mjs`): the app no longer depends on CDNs, and an
+unpinned CDN update can't break it again (that's how the report links broke). Tailwind's
+Play CDN (a runtime compiler, not meant for production) is replaced by a precompiled
+`static/css/tailwind.css`, which CI checks is up to date. Node is a developer-only tool.
+All LLM markdown goes through DOMPurify, with images forbidden.

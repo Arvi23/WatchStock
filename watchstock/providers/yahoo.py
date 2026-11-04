@@ -229,7 +229,11 @@ def fetch_quotes(tickers: list[str]) -> dict[str, dict[str, Any]]:
         if math.isnan(price):
             continue
         change = round((price - prev) / prev * 100, 2) if prev else 0.0
-        out[ticker] = {"price": round(price, 2), "change_pct": change}
+        try:
+            currency = fi.currency
+        except Exception:
+            currency = None
+        out[ticker] = {"price": round(price, 2), "change_pct": change, "currency": currency}
     return out
 
 
