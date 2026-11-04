@@ -10,7 +10,6 @@ Uses a throwaway data dir, so it never touches the real DB.
 import copy
 import json
 import os
-import random
 import sys
 import tempfile
 from pathlib import Path
@@ -52,7 +51,10 @@ def fetch_news(ticker, count=20):
 
 
 def fetch_quotes(tickers):
-    return {t: {"price": round(random.uniform(50, 500), 2), "change_pct": 1.2} for t in tickers}
+    def cur(t):
+        return "RON" if t.endswith(".RO") else "USD"
+
+    return {t: {"price": 100.0, "change_pct": 1.2, "currency": cur(t)} for t in tickers}
 
 
 def fetch_indices():

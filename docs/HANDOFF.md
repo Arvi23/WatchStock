@@ -60,30 +60,41 @@ Read this first. Update it at the end of every batch or before your context runs
 - [x] `scripts/ui_smoke.js` is now a pass/fail browser test (sanitising, currencies, breakdowns,
       watchlist, refresh, chat, no-key hint, failure toast) and runs in CI
 
-### Batch 4 — Portfolio
-- Holdings (ticker, shares, cost basis, currency), P/L, allocation by sector/country,
-  concentration warnings, projected dividend income
+### Batch 4 — Portfolio  *(branch `batch-4-portfolio`, PR #4, stacked on #3)* ✅
+- [x] `holdings` table (migration 2), one row per position (D12)
+- [x] `watchstock/portfolio.py`: value, P/L, day change, weights, sector allocation, per-currency totals
+      (no FX), concentration flags (position > 20%, sector > 40%, only with ≥ 3 positions),
+      projected annual dividends + yield on cost, missing-price handling
+- [x] `/api/portfolio` GET/PUT/DELETE; PUT validates the ticker via `services.get_stock`
+- [x] Home: "My Portfolio" with summary cards, holdings table (click → stock view), position and
+      sector doughnuts, flags; add/edit modal with autocomplete, decimal-comma input, two-click remove
+- [x] Stock sidebar: "You own N @ cost, P/L" line (`holding` field on the snapshot response)
+- [x] Owner feedback: long-term safety renamed "Stability (debt & volatility)" and its breakdown says
+      which half drags it down; scores round half up
+- [x] 76 backend tests; UI smoke covers the portfolio flow
 
 ### Batch 5 — Staying on top of it
 - Morning digest of holdings (earnings / ex-dividend dates, big moves, insider buys, rating changes)
 - Industry peer comparison; thesis tracking ("why I bought" checked against new data)
 
 ## Status
-Batches 1-3 done. PRs #1, #2, #3 (stacked) wait for the owner to merge; files are copied
-to the owner's folder after each batch. Next: batch 4 (portfolio).
+Batches 1-4 done. PRs #1-#4 (stacked) wait for the owner to merge; files are copied to the
+owner's folder after each batch. Next: batch 5.
 
 Notes for the next agent:
-- Batch 4 plan: `holdings` table (ticker, shares, avg cost, currency, opened_at, notes) via a new
-  migration; `/api/portfolio` returning positions with live quotes, P/L, weights, sector/country
-  allocation (sector from the cached snapshot, else a light `fetch_profile`), concentration flags
-  (single position > 20%, sector > 40%), projected annual dividends. UI: a "Portfolio" view on the
-  home screen next to the watchlist; keep it to one table + two small allocation charts.
-  Multi-currency totals: show per-currency subtotals rather than inventing FX conversion; dad is
-  mostly USD.
+- Batch 5 candidates, in order of value for the owner:
+  1. Morning digest for holdings + watchlist: earnings dates / ex-dividend dates
+     (`Ticker.calendar`), moves > 5%, new rating changes, new insider buys. Start as a
+     "Today" panel on the home screen computed on load (no scheduler needed); a
+     scheduled email/notification can come later.
+  2. Thesis check: an LLM call per position comparing `holdings.notes` with the current
+     snapshot and latest news ("still holds / weakening / broken" + why), on demand.
+  3. Peer comparison (same industry via yfinance `Industry`/`Sector`) to make P/E bands
+     industry-relative (see D8).
+- The sidebar "you own" P/L uses the snapshot price (up to 4 h old); the portfolio table
+  uses live quotes. Fine for now; unify if the owner notices.
 - For screenshots/tests: `scripts/fake_server.py` + `node scripts/ui_smoke.js` (needs
   `PLAYWRIGHT_BROWSERS_PATH` pointing at a Chromium matching playwright 1.63.0).
-- The old hackathon DB (`watchstock.db` at repo root) is not migrated; the new DB is
-  `data/watchstock.db`.
 
 ## Needs live testing (owner, on Windows)
 Batch 1 (owner tested 2026-11-04: works; BVB chart said "symbol doesn't exist" → fixed in batch 2;
@@ -105,6 +116,13 @@ Batch 3:
 - [ ] AI report: headings/bullets readable, links clickable
 - [ ] `TLV.RO` shows prices in RON (e.g. "RON 29.50"), MSFT in $
 - [ ] Market cap shows compact (e.g. "$3.08T")
+
+Batch 4:
+- [ ] Add a few real positions (+ ADD POSITION): value, P/L and "Today" look right vs the broker
+- [ ] Expected dividends per year look plausible (shares × annual dividend per share)
+- [ ] Click a row → opens the stock; sidebar shows "You own ..."
+- [ ] Edit a position, then remove it (click REMOVE twice)
+- [ ] Sidebar "Stability" circle; its breakdown explains a low score from high beta
 
 ## Open questions for the owner
 - (answered) Dad holds mostly US stocks → currency formatting stays in batch 3, no rush.

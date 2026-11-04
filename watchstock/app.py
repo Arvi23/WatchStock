@@ -11,7 +11,7 @@ from fastapi.staticfiles import StaticFiles
 from watchstock import __version__, config, db
 from watchstock.providers.openrouter import LLMError
 from watchstock.providers.yahoo import MarketDataError
-from watchstock.routes import market, personal, stocks
+from watchstock.routes import market, personal, portfolio, stocks
 
 log = logging.getLogger(__name__)
 
@@ -40,6 +40,7 @@ def create_app() -> FastAPI:
     app.include_router(stocks.router)
     app.include_router(market.router)
     app.include_router(personal.router)
+    app.include_router(portfolio.router)
 
     @app.get("/api/health")
     async def health() -> dict:

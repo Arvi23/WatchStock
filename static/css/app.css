@@ -135,3 +135,23 @@ body {
     outline: none; font-family: 'Inter', sans-serif;
 }
 #searchOverlay label { color: var(--text-muted); font-size: 0.7rem; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 8px; display: block; }
+
+/* Position modal + portfolio table */
+.hm-label { font-size: 0.65rem; letter-spacing: 1px; text-transform: uppercase; color: #888; display: block; margin-bottom: 6px; }
+.hm-input { width: 100%; background: #111; border: 1px solid #2a2a2a; color: #e0e0e0; padding: 8px 10px; font-size: 0.8rem; outline: none; box-sizing: border-box; font-family: inherit; }
+.hm-input:focus { border-color: var(--accent); }
+.pf-table { width: 100%; border-collapse: collapse; font-size: 0.72rem; }
+.pf-table th { text-align: right; font-weight: 600; font-size: 0.58rem; letter-spacing: 1px; color: #777; padding: 6px 8px; border-bottom: 1px solid #333; text-transform: uppercase; }
+.pf-table td { text-align: right; padding: 7px 8px; border-bottom: 1px solid #222; font-family: monospace; color: #ddd; white-space: nowrap; }
+.pf-table th:first-child, .pf-table td:first-child { text-align: left; }
+.pf-table tbody tr:hover { background: #1e1e1e; }
+.pf-stock { cursor: pointer; font-family: 'Inter', sans-serif; }
+.pf-stock b { color: var(--accent); font-family: monospace; }
+.pf-stock span { color: #888; font-size: 0.65rem; margin-left: 6px; }
+.pf-edit { background: transparent; border: 1px solid #333; color: #888; cursor: pointer; font-size: 0.6rem; padding: 2px 7px; }
+.pf-edit:hover { color: #fff; border-color: #555; }
+.pf-cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 12px; }
+.pf-card { background: #1a1a1a; border: 1px solid #333; padding: 10px 12px; }
+.pf-card .k { font-size: 0.58rem; letter-spacing: 1px; color: #888; text-transform: uppercase; }
+.pf-card .v { font-size: 1.05rem; font-weight: 700; font-family: monospace; margin-top: 4px; color: #e0e0e0; }
+.pf-card .s { font-size: 0.65rem; font-family: monospace; margin-top: 2px; }

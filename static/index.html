@@ -94,6 +94,24 @@
                     <div id="homeHistoryItems" class="flex flex-wrap gap-2 justify-center"></div>
                 </div>
 
+                <!-- Portfolio -->
+                <div id="portfolioSection" class="w-full mt-8" style="max-width:860px;">
+                    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;">
+                        <span style="font-size:0.7rem; letter-spacing:1.5px; color:var(--text-muted);">MY PORTFOLIO</span>
+                        <div style="display:flex; gap:8px; align-items:center;">
+                            <button onclick="loadPortfolio()" title="Refresh prices" style="background:transparent; border:none; color:#666; cursor:pointer; font-size:0.85rem; padding:0 4px;">↻</button>
+                            <button id="btnAddHolding" onclick="openHoldingModal()" style="background:transparent; border:1px solid var(--accent); color:var(--accent); padding:4px 10px; font-size:0.65rem; font-weight:700; letter-spacing:1px; cursor:pointer;">+ ADD POSITION</button>
+                        </div>
+                    </div>
+                    <div id="portfolioSummary"></div>
+                    <div id="portfolioTable"><div style="font-size:0.7rem; color:#555; padding:12px 0;">Loading portfolio...</div></div>
+                    <div id="portfolioCharts" style="display:none; grid-template-columns:1fr 1fr; gap:12px; margin-top:12px;">
+                        <div style="background:#1a1a1a; border:1px solid #333; padding:12px;"><div id="allocPositionsTitle" style="font-size:0.6rem; letter-spacing:1.5px; color:#888; margin-bottom:8px;">BY POSITION</div><div style="height:180px;"><canvas id="allocPositions"></canvas></div></div>
+                        <div style="background:#1a1a1a; border:1px solid #333; padding:12px;"><div style="font-size:0.6rem; letter-spacing:1.5px; color:#888; margin-bottom:8px;">BY SECTOR</div><div style="height:180px;"><canvas id="allocSectors"></canvas></div></div>
+                    </div>
+                    <div id="portfolioFlags"></div>
+                </div>
+
                 <!-- Market Movers -->
                 <div id="marketMovers" class="w-full mt-8" style="max-width:560px; display:none;">
                     <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;">
@@ -178,6 +196,7 @@
                         <span class="text-xs" style="color: var(--text-muted)">Stock Price</span>
                         <span id="sbPrice" class="text-sm font-medium font-mono">--</span>
                     </div>
+                    <div id="sbHolding" style="display:none; font-size:0.68rem; margin:-2px 0 8px; padding:6px 8px; background:#1a1a1a; border:1px solid #333; line-height:1.5;"></div>
                     <div class="flex justify-between items-start">
                         <span class="text-xs flex-shrink-0 mt-1" style="color: var(--text-muted)">CEO</span>
                         <div id="sbCEOList" class="flex flex-col gap-0.5 text-right"></div>
@@ -198,7 +217,7 @@
                         <div class="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity" onclick="showScoreExplanation('long_term')">
                             <div id="sbLtCircle" class="w-10 h-10 flex flex-shrink-0 items-center justify-center text-base font-bold bg-gray-800 border-2 border-gray-600 transition-transform hover:scale-110">--</div>
                             <div>
-                                <span class="block text-sm font-semibold">Solvency</span>
+                                <span class="block text-sm font-semibold">Stability</span>
                                 <span class="text-xs" style="color: var(--text-muted)">Debt &amp; volatility</span>
                             </div>
                         </div>
@@ -469,6 +488,38 @@
         </div>
     </div>
 
+    <!-- Add / edit position -->
+    <div id="holdingModal" style="display:none; position:fixed; inset:0; z-index:2000; background:rgba(0,0,0,0.75); backdrop-filter:blur(4px); align-items:center; justify-content:center;">
+        <div style="background:#1a1a1a; border:1px solid #333; width:440px; max-width:92vw;">
+            <div style="padding:16px 20px; border-bottom:1px solid #333; display:flex; justify-content:space-between; align-items:center;">
+                <h3 id="holdingModalTitle" style="font-size:0.75rem; font-weight:700; color:#fff; letter-spacing:2px; margin:0; text-transform:uppercase;">Add position</h3>
+                <button onclick="closeHoldingModal()" style="color:#666; font-size:1.1rem; background:none; border:none; cursor:pointer; padding:4px; line-height:1;">✕</button>
+            </div>
+            <div style="padding:20px 24px;">
+                <label class="hm-label">Stock (company name or ticker)</label>
+                <div style="position:relative; margin-bottom:14px;">
+                    <input id="holdingTicker" type="text" autocomplete="off" placeholder="e.g. Apple or AAPL" class="hm-input">
+                    <div id="holdingDropdown" class="dropdown"></div>
+                </div>
+                <div style="display:flex; gap:10px; margin-bottom:14px;">
+                    <div style="flex:1;"><label class="hm-label">Shares</label><input id="holdingShares" type="text" inputmode="decimal" placeholder="e.g. 10" class="hm-input"></div>
+                    <div style="flex:1;"><label class="hm-label">Average cost per share</label><input id="holdingCost" type="text" inputmode="decimal" placeholder="e.g. 182.50" class="hm-input"></div>
+                </div>
+                <div style="font-size:0.62rem; color:#555; margin:-8px 0 14px;">In the stock's own currency (USD for US stocks). If you bought several times, use the average price you paid.</div>
+                <label class="hm-label">Why I own it <span style="color:#555; text-transform:none; letter-spacing:0;">(optional)</span></label>
+                <textarea id="holdingNotes" rows="3" placeholder="e.g. Cloud growth, strong balance sheet, pays a growing dividend." class="hm-input" style="resize:vertical;"></textarea>
+                <div id="holdingError" style="display:none; color:#ff6b6b; font-size:0.7rem; margin-top:10px;"></div>
+                <div style="display:flex; justify-content:space-between; gap:10px; margin-top:20px;">
+                    <button id="btnDeleteHolding" onclick="deleteHolding()" style="display:none; background:transparent; border:1px solid #5a2a2a; color:#ff6b6b; padding:8px 14px; font-size:0.7rem; letter-spacing:1px; cursor:pointer;">REMOVE</button>
+                    <div style="display:flex; gap:10px; margin-left:auto;">
+                        <button onclick="closeHoldingModal()" style="background:transparent; border:1px solid #333; color:#666; padding:8px 18px; font-size:0.7rem; letter-spacing:1px; cursor:pointer;">CANCEL</button>
+                        <button id="btnSaveHolding" onclick="saveHolding()" style="background:var(--accent); border:none; color:#fff; padding:8px 20px; font-size:0.7rem; font-weight:700; letter-spacing:1px; cursor:pointer;">SAVE</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Score Breakdown Popover -->
     <div id="scoreBreakdownPopover" style="display:none; position:fixed; z-index:3000; background:#1e1e1e; border:1px solid #444; padding:16px; width:290px; box-shadow:0 8px 32px rgba(0,0,0,0.7); pointer-events:all;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; border-bottom:1px solid #333; padding-bottom:10px;">
@@ -497,6 +548,7 @@
 <script src="/static/js/scores.js"></script>
 <script src="/static/js/settings.js"></script>
 <script src="/static/js/home.js"></script>
+<script src="/static/js/portfolio.js"></script>
 <script src="/static/js/dashboard.js"></script>
 <script src="/static/js/analysis.js"></script>
 <script src="/static/js/chat.js"></script>

@@ -117,3 +117,45 @@ def latest_analysis(ticker: str) -> dict[str, Any] | None:
     if not row:
         return None
     return {**json.loads(row["content"]), "created_at": row["created_at"], "model": row["model"]}
+
+
+# ---------------------------------------------------------------- holdings
+
+
+def holdings_list() -> list[dict[str, Any]]:
+    with db.session() as conn:
+        rows = conn.execute(
+            "SELECT ticker, shares, avg_cost, currency, notes, added_at, updated_at "
+            "FROM holdings ORDER BY ticker"
+        ).fetchall()
+    return [dict(r) for r in rows]
+
+
+def get_holding(ticker: str) -> dict[str, Any] | None:
+    with db.session() as conn:
+        row = conn.execute(
+            "SELECT ticker, shares, avg_cost, currency, notes FROM holdings WHERE ticker = ?",
+            (ticker,),
+        ).fetchone()
+    return dict(row) if row else None
+
+
+def holding_upsert(
+    ticker: str, shares: float, avg_cost: float, currency: str | None, notes: str
+) -> None:
+    now = utcnow_iso()
+    with db.session() as conn:
+        conn.execute(
+            "INSERT INTO holdings "
+            "(ticker, shares, avg_cost, currency, notes, added_at, updated_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?) "
+            "ON CONFLICT(ticker) DO UPDATE SET shares = excluded.shares, "
+            "avg_cost = excluded.avg_cost, currency = excluded.currency, "
+            "notes = excluded.notes, updated_at = excluded.updated_at",
+            (ticker, shares, avg_cost, currency, notes, now, now),
+        )
+
+
+def holding_delete(ticker: str) -> None:
+    with db.session() as conn:
+        conn.execute("DELETE FROM holdings WHERE ticker = ?", (ticker,))

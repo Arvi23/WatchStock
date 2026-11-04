@@ -8,3 +8,4 @@ refreshLlmStatus();
 loadIndices();
 loadMarketMovers();
 loadMarketNews();
+initPortfolio();

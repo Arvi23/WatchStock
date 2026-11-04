@@ -40,7 +40,7 @@ def test_opportunity_components_and_weights():
     assert [c["key"] for c in comps] == ["quality", "valuation", "analyst", "smart_money"]
     assert sum(scoring.OPPORTUNITY_WEIGHTS.values()) == pytest.approx(1.0)
     expected = sum(out["scores"][k]["score"] * w for k, w in scoring.OPPORTUNITY_WEIGHTS.items())
-    assert out["scores"]["opportunity"]["score"] == round(expected)
+    assert out["scores"]["opportunity"]["score"] == int(expected + 0.5)
 
 
 def test_opportunity_labels():
@@ -179,3 +179,12 @@ def test_risk_flags():
     assert r["total_risk_points"] == 6
     assert r["severity_level"] == "High"
     assert scoring.calculate_financial_risk({})["total_risk_points"] == 0
+
+
+def test_stability_explains_which_half_drags_it_down():
+    # The owner's case: almost no debt, beta 2.54 -> blended 49 needs an explanation.
+    s = scoring.calculate_safety({"debtToEquity": 6, "beta": 2.54})
+    assert s["long_term"]["score"] == 49  # (97 + 0) / 2 = 48.5, rounded half up
+    assert any("Held down by volatility" in b["item"] for b in s["long_term"]["breakdown"])
+    balanced = scoring.calculate_safety({"debtToEquity": 100, "beta": 1.5})
+    assert not any("Held down" in b["item"] for b in balanced["long_term"]["breakdown"])

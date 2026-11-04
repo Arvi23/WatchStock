@@ -34,6 +34,45 @@ const check = (name, ok, detail = '') => { if (!ok) failures.push(`${name}${deta
   check('tailwind css applied', await page.evaluate(() => getComputedStyle(document.querySelector('#initialView')).position === 'absolute'));
   await shot('home');
 
+  // Portfolio: empty state, add (decimal comma), bad ticker, charts, flags
+  check('portfolio empty state', /No positions yet/.test(await text('#portfolioTable')));
+  const addPosition = async (ticker, shares, cost) => {
+    await page.click('#btnAddHolding');
+    await page.fill('#holdingTicker', ticker);
+    await page.fill('#holdingShares', shares);
+    await page.fill('#holdingCost', cost);
+    await page.click('#btnSaveHolding');
+    await page.waitForTimeout(1200);
+  };
+  await addPosition('MSFT', '10', '300,50');
+  await addPosition('AAPL', '5', '150');
+  await addPosition('NVDA', '20', '50');
+  await addPosition('TLV.RO', '100', '20');
+  const pfTable = await text('#portfolioTable');
+  check('portfolio rows', /MSFT/.test(pfTable) && /AAPL/.test(pfTable) && /TLV\.RO/.test(pfTable), pfTable);
+  check('decimal comma cost', /\$300\.50/.test(pfTable), pfTable);
+  check('RON position priced in RON', /RON\s?100\.00/.test(pfTable), pfTable);
+  check('USD summary value', /\$3,500\.00/.test(await text('#portfolioSummary')), await text('#portfolioSummary'));
+  check('allocation charts shown', await page.evaluate(() => getComputedStyle(document.getElementById('portfolioCharts')).display === 'grid'));
+  check('concentration flag', /NVDA is 57% of your USD holdings/.test(await text('#portfolioFlags')), await text('#portfolioFlags'));
+  await page.click('#btnAddHolding');
+  await page.fill('#holdingTicker', 'FAIL');
+  await page.fill('#holdingShares', '1');
+  await page.fill('#holdingCost', '1');
+  await page.click('#btnSaveHolding');
+  await page.waitForTimeout(1000);
+  check('bad ticker error in modal', /429/.test(await text('#holdingError')));
+  await page.evaluate(() => closeHoldingModal());
+  await shot('portfolio');
+  // edit prefills, two-click remove
+  await page.evaluate(() => openHoldingModal('AAPL'));
+  check('edit prefills', (await page.inputValue('#holdingShares')) === '5');
+  await page.click('#btnDeleteHolding');
+  check('remove needs confirmation', /CLICK AGAIN/.test(await text('#btnDeleteHolding')));
+  await page.click('#btnDeleteHolding');
+  await page.waitForTimeout(1000);
+  check('position removed', !/AAPL/.test(await text('#portfolioTable')));
+
   // Open a stock: report renders, sanitised
   await page.evaluate(() => quickSearch('Microsoft Corporation', 'MSFT'));
   await page.waitForTimeout(2500);
@@ -41,6 +80,7 @@ const check = (name, ok, detail = '') => { if (!ok) failures.push(`${name}${deta
   check('price in USD', /^\$414\.00$/.test(await text('#sbPrice')), await text('#sbPrice'));
   check('market cap compact', /^\$3\.08T$/.test(await text('#sbMarketCap')), await text('#sbMarketCap'));
   check('as-of label', /data /.test(await text('#asOfLabel')));
+  check('you-own line', /You own 10/.test(await text('#sbHolding')), await text('#sbHolding'));
   const deepDive = await page.evaluate(() => document.getElementById('financialDeepDiveContent').innerHTML);
   check('markdown link rendered', /<a href="https:\/\/example.com" target="_blank"/.test(deepDive), deepDive.slice(0, 200));
   check('LLM HTML sanitised', !/onerror|<script|<img/i.test(deepDive) && !(await page.evaluate(() => window.__xss)), deepDive);
