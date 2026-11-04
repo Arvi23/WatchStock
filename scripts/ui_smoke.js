@@ -73,6 +73,30 @@ const check = (name, ok, detail = '') => { if (!ok) failures.push(`${name}${deta
   await page.waitForTimeout(1000);
   check('position removed', !/AAPL/.test(await text('#portfolioTable')));
 
+  // Today panel: events for held/watched stocks
+  await page.waitForTimeout(800);
+  const todayText = await text('#todayList');
+  check('today: big move first', /NVDA[\s\S]*Down 6\.5% today/.test(todayText), todayText);
+  check('today: earnings', /Earnings in 3 days/.test(todayText), todayText);
+  check('today: ex-dividend', /Ex-dividend in 5 days/.test(todayText), todayText);
+  check('today: rating', /Example Securities upgraded Hold → Buy/.test(todayText), todayText);
+  check('today: insider buy', /Insider buy: Jane Doe \(\$1\.2M\)/.test(todayText), todayText);
+
+  // Thesis check: needs a note first
+  check('thesis needs a note', /ADD WHY/.test(await text('#portfolioTable')));
+  await page.evaluate(() => openHoldingModal('MSFT'));
+  await page.fill('#holdingNotes', 'Cloud growth and a strong balance sheet.');
+  await page.click('#btnSaveHolding');
+  await page.waitForTimeout(1200);
+  await page.click('#portfolioTable button:has-text("CHECK")');
+  await page.waitForTimeout(1500);
+  const thesis = await text('#scoreModalBody');
+  check('thesis result', /INTACT/.test(thesis) && /cloud growth is still visible/.test(thesis) && /Your thesis: Cloud growth/.test(thesis), thesis);
+  await shot('thesis');
+  await page.evaluate(() => closeScoreModal());
+  await page.waitForTimeout(500);
+  check('thesis badge in table', /INTACT/.test(await text('#portfolioTable')));
+
   // Open a stock: report renders, sanitised
   await page.evaluate(() => quickSearch('Microsoft Corporation', 'MSFT'));
   await page.waitForTimeout(2500);

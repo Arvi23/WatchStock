@@ -89,3 +89,12 @@ mostly USD). Adding a position validates the ticker by fetching and caching its
 snapshot, which also gives sector/country/dividend rate for allocation. A position's
 `notes` ("why I own it") is stored now so batch 5 can check the thesis against new data.
 Scores are rounded half up (49, not Python's banker's 48) so people can check them by hand.
+
+## D13 — "Today" panel computed on page load; thesis checks on demand (2026-11-04)
+The morning-digest idea starts as a panel computed when the home screen opens (calendar,
+big moves, rating changes, insider buys for held + watched stocks). That needs no scheduler,
+email setup or background process on the dad's PC. Per-ticker event data is cached for 6 h
+and fetched at most 4 tickers at a time, to stay gentle with Yahoo. Thesis checks are an
+explicit button per position (one LLM call each) and are stored with the thesis text as it
+was, so a later check can say what changed. Insider sales are skipped (routine diversification);
+purchases are signal.

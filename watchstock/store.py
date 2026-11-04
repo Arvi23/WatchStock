@@ -159,3 +159,32 @@ def holding_upsert(
 def holding_delete(ticker: str) -> None:
     with db.session() as conn:
         conn.execute("DELETE FROM holdings WHERE ticker = ?", (ticker,))
+
+
+# ----------------------------------------------------------- thesis checks
+
+
+def save_thesis_check(
+    ticker: str, model: str, thesis: str, content: dict[str, Any]
+) -> dict[str, Any]:
+    created_at = utcnow_iso()
+    with db.session() as conn:
+        conn.execute(
+            "INSERT INTO thesis_checks (ticker, created_at, model, thesis, content) "
+            "VALUES (?, ?, ?, ?, ?)",
+            (ticker, created_at, model, thesis, json.dumps(content, default=str)),
+        )
+    return {**content, "created_at": created_at, "model": model, "thesis": thesis}
+
+
+def latest_thesis_check(ticker: str) -> dict[str, Any] | None:
+    with db.session() as conn:
+        row = conn.execute(
+            "SELECT created_at, model, thesis, content FROM thesis_checks WHERE ticker = ? "
+            "ORDER BY created_at DESC, id DESC LIMIT 1",
+            (ticker,),
+        ).fetchone()
+    if not row:
+        return None
+    return {**json.loads(row["content"]), "created_at": row["created_at"],
+            "model": row["model"], "thesis": row["thesis"]}  # fmt: skip

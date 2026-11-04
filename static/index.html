@@ -142,6 +142,11 @@
 
             <!-- Right column: news -->
             <div style="width:290px; flex-shrink:0; border-left:1px solid var(--border-color); overflow-y:auto; padding:20px 18px; display:flex; flex-direction:column;">
+                <div style="font-size:0.62rem; letter-spacing:2px; color:var(--text-muted); margin-bottom:10px; padding-bottom:8px; border-bottom:1px solid var(--border-color); flex-shrink:0; display:flex; justify-content:space-between; align-items:center;">
+                    <span>YOUR STOCKS · NEXT 2 WEEKS</span>
+                    <button onclick="loadToday(true)" title="Refresh" style="background:transparent; border:none; color:#666; cursor:pointer; font-size:0.85rem; padding:0;">↻</button>
+                </div>
+                <div id="todayList" style="margin-bottom:24px; flex-shrink:0;"><div style="font-size:0.68rem; color:#555;">Loading...</div></div>
                 <div style="font-size:0.62rem; letter-spacing:2px; color:var(--text-muted); margin-bottom:14px; padding-bottom:8px; border-bottom:1px solid var(--border-color); flex-shrink:0;">MARKET NEWS</div>
                 <div id="newsList">
                     <div style="font-size:0.7rem; color:#444; margin-top:12px;">Loading...</div>
@@ -549,6 +554,7 @@
 <script src="/static/js/settings.js"></script>
 <script src="/static/js/home.js"></script>
 <script src="/static/js/portfolio.js"></script>
+<script src="/static/js/today.js"></script>
 <script src="/static/js/dashboard.js"></script>
 <script src="/static/js/analysis.js"></script>
 <script src="/static/js/chat.js"></script>

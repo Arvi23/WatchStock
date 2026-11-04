@@ -65,7 +65,7 @@ function renderPortfolio() {
     const rows = p.positions.map(pos => `
         <tr>
             <td class="pf-stock" onclick="quickSearch(${esc(JSON.stringify(pos.name))}, ${esc(JSON.stringify(pos.ticker))})" title="Open ${esc(pos.name)}">
-                <b>${esc(pos.ticker)}</b><span>${esc(pos.name.slice(0, 24))}</span></td>
+                <b>${esc(pos.ticker)}</b><span>${esc(pos.name.length > 18 ? pos.name.slice(0, 17) + '…' : pos.name)}</span></td>
             <td>${pos.shares.toLocaleString('en-US', { maximumFractionDigits: 4 })}</td>
             <td>${fmtMoney(pos.avg_cost, pos.currency)}</td>
             <td>${fmtMoney(pos.price, pos.currency)}</td>
@@ -73,10 +73,11 @@ function renderPortfolio() {
             <td>${fmtMoney(pos.value, pos.currency)}</td>
             <td style="color:${plColor(pos.pl)};">${fmtSigned(pos.pl, v => fmtMoney(v, pos.currency))}<br><span style="font-size:0.62rem;">${fmtPctSigned(pos.pl_pct)}</span></td>
             <td>${pos.weight != null ? pos.weight.toFixed(1) + '%' : '—'}</td>
+            <td>${thesisBadge(pos)}</td>
             <td><button class="pf-edit" onclick="openHoldingModal(${esc(JSON.stringify(pos.ticker))})" title="Edit or remove">EDIT</button></td>
         </tr>`).join('');
     table.innerHTML = `<table class="pf-table">
-        <thead><tr><th>Stock</th><th>Shares</th><th>Avg cost</th><th>Price</th><th>Today</th><th>Value</th><th>P/L</th><th>Weight</th><th></th></tr></thead>
+        <thead><tr><th>Stock</th><th>Shares</th><th>Avg cost</th><th>Price</th><th>Today</th><th>Value</th><th>P/L</th><th>Weight</th><th title="Does your reason for owning it still hold?">Thesis</th><th></th></tr></thead>
         <tbody>${rows}</tbody></table>`;
 
     // Allocation charts for the biggest currency group (by number of positions).
@@ -170,6 +171,7 @@ async function saveHolding() {
         closeHoldingModal();
         showToast(`Saved ${res.ticker} (${res.company_name}).`);
         await loadPortfolio();
+        loadToday();
     } catch (e) {
         holdingError(e.message);
     } finally {
@@ -192,9 +194,69 @@ async function deleteHolding() {
         closeHoldingModal();
         showToast(`Removed ${ticker} from the portfolio.`);
         await loadPortfolio();
+        loadToday();
     } catch (e) {
         holdingError(e.message);
     }
+}
+
+// ---- Thesis check ("does my reason for owning it still hold?") ----
+
+const THESIS_STYLE = {
+    intact:    { color: '#4caf50', label: 'INTACT' },
+    weakening: { color: '#ffb900', label: 'WEAKENING' },
+    broken:    { color: '#f44336', label: 'BROKEN' },
+    unclear:   { color: '#888',    label: 'UNCLEAR' },
+};
+
+function thesisBadge(pos) {
+    const t = JSON.stringify(pos.ticker);
+    if (!pos.notes) {
+        return `<button class="pf-edit" onclick="openHoldingModal(${esc(t)})" title="Add a 'why I own it' note to enable thesis checks">ADD WHY</button>`;
+    }
+    const c = pos.thesis_check;
+    if (!c) return `<button class="pf-edit" onclick="showThesis(${esc(t)}, true)" title="Ask the AI whether your reason still holds">CHECK</button>`;
+    const st = THESIS_STYLE[c.status] || THESIS_STYLE.unclear;
+    return `<button class="pf-edit" onclick="showThesis(${esc(t)}, false)" title="Checked ${esc(timeAgo(c.created_at))}"
+        style="color:${st.color}; border-color:${st.color}66;">${st.label}</button>`;
+}
+
+function openInfoModal(title, html) {
+    document.getElementById('scoreModalTitle').innerText = title;
+    document.getElementById('scoreModalBody').innerHTML = html;
+    document.getElementById('scoreModal').style.display = 'flex';
+}
+
+async function showThesis(ticker, runNew) {
+    openInfoModal(`${ticker} — thesis check`, '<div style="font-size:0.75rem; color:#888;"><span class="spinner" style="display:inline-block; width:12px; height:12px; border-width:2px; vertical-align:middle; margin-right:8px;"></span>' +
+        (runNew ? 'Asking the AI whether your reason still holds...' : 'Loading...') + '</div>');
+    try {
+        let result = runNew ? null : await api(`/api/portfolio/${encodeURIComponent(ticker)}/thesis`);
+        if (!result) result = await api(`/api/portfolio/${encodeURIComponent(ticker)}/thesis`, { method: 'POST' });
+        renderThesis(ticker, result);
+        loadPortfolio();
+    } catch (e) {
+        openInfoModal(`${ticker} — thesis check`, `<div style="font-size:0.75rem; color:#ff6b6b;">${esc(e.message)}</div>`);
+    }
+}
+
+function renderThesis(ticker, r) {
+    const st = THESIS_STYLE[r.status] || THESIS_STYLE.unclear;
+    const list = (title, items, color) => items?.length ? `
+        <div style="margin-top:12px;"><div style="font-size:0.6rem; letter-spacing:1.5px; color:${color}; margin-bottom:4px;">${title}</div>
+        <ul style="margin:0 0 0 16px; padding:0; list-style:disc;">${items.map(i => `<li style="font-size:0.72rem; color:#ccc; margin:3px 0; line-height:1.45;">${esc(i)}</li>`).join('')}</ul></div>` : '';
+    openInfoModal(`${ticker} — thesis check`, `
+        <div style="display:inline-block; font-size:0.75rem; font-weight:800; letter-spacing:1px; color:${st.color}; border:1px solid ${st.color}; padding:3px 10px;">${st.label}</div>
+        <p style="font-size:0.8rem; color:#e0e0e0; line-height:1.55; margin:12px 0 0;">${esc(r.summary)}</p>
+        ${list('SUPPORTS IT', r.supporting, '#4caf50')}
+        ${list('AGAINST IT', r.against, '#f44336')}
+        ${list('KEEP AN EYE ON', r.watch, '#ffb900')}
+        <div style="margin-top:14px; padding:8px 10px; background:#151515; border-left:2px solid #444; font-size:0.68rem; color:#999; line-height:1.5;">
+            <span style="color:#666;">Your thesis:</span> ${esc(r.thesis)}</div>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:14px;">
+            <span style="font-size:0.6rem; color:#555;">${esc(r.model || '')} · ${r.created_at ? esc(new Date(r.created_at).toLocaleString()) : ''} · AI opinion, not advice</span>
+            <button class="pf-edit" onclick="showThesis(${esc(JSON.stringify(ticker))}, true)">CHECK AGAIN</button>
+        </div>`);
 }
 
 // "You own ..." line in the stock sidebar.

@@ -93,6 +93,12 @@ class FakeYahoo:
     def fetch_movers(self, count=20):
         return self._market("movers", {"gainers": [], "losers": []})
 
+    events: dict = {}
+
+    def fetch_events(self, ticker):
+        self.calls.append(("events", ticker))
+        return copy.deepcopy(self.events.get(ticker, {}))
+
     def search(self, query, limit=6):
         self.calls.append(("search", query))
         return [
@@ -135,7 +141,7 @@ def _isolated(tmp_path, monkeypatch):
 def fake_yahoo(monkeypatch):
     fake = FakeYahoo()
     for name in ("fetch_profile", "fetch_news", "fetch_quotes", "fetch_indices",
-                 "fetch_market_news", "fetch_movers", "search"):  # fmt: skip
+                 "fetch_market_news", "fetch_movers", "search", "fetch_events"):  # fmt: skip
         monkeypatch.setattr(yahoo, name, getattr(fake, name))
     return fake
 

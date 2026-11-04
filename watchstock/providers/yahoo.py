@@ -213,6 +213,44 @@ def fetch_market_news(count: int = 10) -> list[dict[str, Any]]:
     return [n for n in (normalize_news_item(i) for i in raw or []) if n]
 
 
+# ------------------------------------------------------------------- events
+
+
+def _iso_date(value: Any) -> str | None:
+    if value is None or _is_blank(value):
+        return None
+    try:
+        return value.isoformat()[:10]
+    except AttributeError:
+        return str(value)[:10]
+
+
+def fetch_events(ticker: str) -> dict[str, Any]:
+    """Upcoming calendar dates plus recent rating changes and insider trades.
+
+    `calendar` is a dict of `date` objects; "Earnings Date" is a list (a range when
+    the date isn't confirmed yet). Missing pieces come back empty rather than failing.
+    """
+    try:
+        stock = yf.Ticker(ticker)
+    except Exception as exc:
+        raise MarketDataError(f"Yahoo Finance request failed for {ticker}: {exc}") from exc
+    try:
+        cal = stock.calendar or {}
+    except Exception:
+        cal = {}
+    earnings = cal.get("Earnings Date") or []
+    if not isinstance(earnings, list | tuple):
+        earnings = [earnings]
+    return {
+        "earnings_dates": [d for d in (_iso_date(e) for e in earnings) if d],
+        "ex_dividend_date": _iso_date(cal.get("Ex-Dividend Date")),
+        "dividend_date": _iso_date(cal.get("Dividend Date")),
+        "upgrades_downgrades": _upgrades(stock),
+        "insider_transactions": _insider_transactions(stock),
+    }
+
+
 # ------------------------------------------------------------------- quotes
 
 
