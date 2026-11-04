@@ -29,7 +29,8 @@ const check = (name, ok, detail = '') => { if (!ok) failures.push(`${name}${deta
   await page.goto(BASE + '/');
   await page.waitForTimeout(1200);
   check('indices render', /S&P 500/.test(await text('#indicesBar')));
-  check('Inter font loaded', await page.evaluate(() => document.fonts.check('600 12px Inter')));
+  // Explicitly load the face (browsers fetch fonts lazily) and confirm it came from /static/vendor.
+  check('Inter font loaded', await page.evaluate(async () => (await document.fonts.load('600 12px Inter')).length > 0));
   check('tailwind css applied', await page.evaluate(() => getComputedStyle(document.querySelector('#initialView')).position === 'absolute'));
   await shot('home');
 
