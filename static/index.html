@@ -151,10 +151,6 @@
                 <button onclick="openSettings()" title="Settings" class="w-8 h-8 flex items-center justify-center hover:bg-[#252526] transition-colors cursor-pointer" style="background:transparent; border:1px solid #333; color:var(--text-muted);">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><circle cx="12" cy="12" r="3"></circle></svg>
                 </button>
-                <button onclick="signOut()" title="Sign Out" class="flex items-center gap-2 px-3 py-2 hover:bg-[#252526] transition-colors cursor-pointer" style="background:transparent; border:1px solid #333; color:var(--text-muted); font-size:0.75rem; font-family:'Inter',sans-serif;">
-                    <span id="homeUserName" style="color:var(--accent); font-weight:600;">User</span>
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
-                </button>
             </div>
         </div>
 
@@ -268,7 +264,7 @@
                             <button id="btnWatchlist" onclick="toggleWatchlist()" title="Add to watchlist"
                                 style="font-size:1.1rem; background:transparent; border:none; cursor:pointer; color:#555; padding:0; line-height:1; flex-shrink:0; transition:color 0.15s;">☆</button>
                         </div>
-                        <button id="btnForceUpdate" style="display:none; padding:3px 8px; font-size:0.6rem; font-weight:700; letter-spacing:1px; background:transparent; border:1px solid var(--accent); color:var(--accent); cursor:pointer; white-space:nowrap;" onclick="forceUpdateSupplier()">UPDATE DATA</button>
+                        <div style="display:flex; align-items:center; gap:8px;"><button id="btnForceUpdate" title="Fetch fresh data from Yahoo Finance" style="padding:3px 8px; font-size:0.6rem; font-weight:700; letter-spacing:1px; background:transparent; border:1px solid var(--accent); color:var(--accent); cursor:pointer; white-space:nowrap;" onclick="forceUpdateSupplier()">REFRESH</button><span id="asOfLabel" style="font-size:0.6rem; color:#666; white-space:nowrap;"></span></div>
                     </div>
                 </div>
 
@@ -319,18 +315,10 @@
                 </div>
             </div>
 
-            <!-- User / Sign Out — pinned to bottom -->
-            <div class="px-4 py-3 border-t border-[#333] flex items-center gap-3 flex-shrink-0">
-                <div class="flex items-center gap-3 flex-1 min-w-0 cursor-pointer hover:opacity-75 transition-opacity" onclick="openSettings()" title="Settings">
-                    <div class="w-8 h-8 bg-[#333] flex items-center justify-center text-xs font-bold border border-[#444] flex-shrink-0" id="userAvatar">?</div>
-                    <div class="min-w-0">
-                        <div id="userDisplayName" class="text-sm font-medium truncate">User</div>
-                        <div id="userRole" class="text-xs" style="color: var(--text-muted)">--</div>
-                    </div>
-                </div>
-                <button onclick="signOut()" title="Sign Out" class="w-8 h-8 flex items-center justify-center hover:bg-[#333] transition-colors cursor-pointer flex-shrink-0" style="background: transparent; border: 1px solid #444; color: var(--text-muted);">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
-                </button>
+            <!-- Settings — pinned to bottom -->
+            <div class="px-4 py-3 border-t border-[#333] flex items-center gap-3 flex-shrink-0 cursor-pointer hover:opacity-75 transition-opacity" onclick="openSettings()" title="Settings">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color:var(--text-muted)"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                <span class="text-sm" style="color:var(--text-muted)">Settings</span>
             </div>
         </aside>
 
@@ -554,31 +542,23 @@
                 <div style="font-size:0.62rem; letter-spacing:2px; text-transform:uppercase; color:var(--text-muted); margin-bottom:16px; border-bottom:1px solid #222; padding-bottom:8px;">API Keys</div>
 
                 <div style="margin-bottom:14px;">
-                    <label style="font-size:0.65rem; letter-spacing:1px; text-transform:uppercase; color:#888; display:block; margin-bottom:6px;">LLM API Key</label>
+                    <label style="font-size:0.65rem; letter-spacing:1px; text-transform:uppercase; color:#888; display:block; margin-bottom:6px;">OpenRouter API Key</label>
                     <div style="display:flex; gap:6px;">
-                        <input id="settingsLlmKey" type="password" placeholder="sk-or-...  /  AIza...  /  sk-ant-..."
+                        <input id="settingsLlmKey" type="password" placeholder="sk-or-..."
                             style="flex:1; background:#111; border:1px solid #2a2a2a; color:#e0e0e0; padding:8px 10px; font-size:0.78rem; font-family:monospace; outline:none; min-width:0;">
                         <button onclick="toggleVis('settingsLlmKey',this)" style="background:#222; border:1px solid #2a2a2a; color:#666; padding:0 10px; font-size:0.65rem; letter-spacing:1px; cursor:pointer; white-space:nowrap; flex-shrink:0;">SHOW</button>
                     </div>
-                    <div style="font-size:0.62rem; color:#555; margin-top:4px;">Works with OpenRouter, Gemini, or Anthropic keys</div>
+                    <div id="settingsKeyHint" style="font-size:0.62rem; color:#555; margin-top:4px;">Get one at openrouter.ai. Needed only for AI analysis and chat.</div>
                 </div>
 
                 <div style="margin-bottom:14px;">
                     <label style="font-size:0.65rem; letter-spacing:1px; text-transform:uppercase; color:#888; display:block; margin-bottom:6px;">Model</label>
-                    <input id="settingsLlmModel" type="text" placeholder="openai/gpt-4o-mini"
+                    <input id="settingsLlmModel" type="text" placeholder="anthropic/claude-haiku-4-5"
                         style="width:100%; background:#111; border:1px solid #2a2a2a; color:#e0e0e0; padding:8px 10px; font-size:0.78rem; font-family:monospace; outline:none; box-sizing:border-box;">
                     <div style="font-size:0.62rem; color:#555; margin-top:4px;">e.g. &nbsp;anthropic/claude-haiku-4-5 &nbsp;·&nbsp; google/gemini-2.0-flash-001 &nbsp;·&nbsp; openai/gpt-4o-mini</div>
                 </div>
 
-                <div style="margin-bottom:24px;">
-                    <label style="font-size:0.65rem; letter-spacing:1px; text-transform:uppercase; color:#888; display:block; margin-bottom:6px;">News API Key <span style="color:#444; text-transform:none; letter-spacing:0;">(optional)</span></label>
-                    <div style="display:flex; gap:6px;">
-                        <input id="settingsNewsKey" type="password" placeholder="Get a free key at newsapi.org"
-                            style="flex:1; background:#111; border:1px solid #2a2a2a; color:#e0e0e0; padding:8px 10px; font-size:0.78rem; font-family:monospace; outline:none; min-width:0;">
-                        <button onclick="toggleVis('settingsNewsKey',this)" style="background:#222; border:1px solid #2a2a2a; color:#666; padding:0 10px; font-size:0.65rem; letter-spacing:1px; cursor:pointer; white-space:nowrap; flex-shrink:0;">SHOW</button>
-                    </div>
-                </div>
-
+<div style="margin-bottom:24px;"></div>
                 <div style="display:flex; justify-content:flex-end; gap:10px;">
                     <button onclick="closeSettings()" style="background:transparent; border:1px solid #333; color:#666; padding:8px 18px; font-size:0.7rem; letter-spacing:1px; cursor:pointer;">CANCEL</button>
                     <button onclick="saveSettings()" style="background:var(--accent); border:none; color:#fff; padding:8px 20px; font-size:0.7rem; font-weight:700; letter-spacing:1px; cursor:pointer;">SAVE</button>
@@ -611,11 +591,14 @@
     </div>
 
 <script>
-    // Configure marked: all links open in new tab so they never navigate away from the SPA
+    // Configure marked: all links open in new tab so they never navigate away from the SPA.
+    // marked >= 13 passes a single token object to renderers (the old (href, title, text)
+    // signature rendered every link as "undefined").
     marked.use({
         renderer: {
-            link(href, title, text) {
-                return `<a href="${href}" target="_blank" rel="noopener noreferrer"${title ? ` title="${title}"` : ''}>${text}</a>`;
+            link({ href, title, tokens }) {
+                const text = this.parser.parseInline(tokens);
+                return `<a href="${esc(href)}" target="_blank" rel="noopener noreferrer"${title ? ` title="${esc(title)}"` : ''}>${text}</a>`;
             }
         }
     });
@@ -657,35 +640,39 @@
     let currentRawData = null;
     let dynamicChartInstance = null;
 
-    // --- USER SESSION ---
-    let currentUser = null;
-
-    function loadUserSession() {
-        const raw = sessionStorage.getItem('user');
-        if (!raw) { window.location.href = '/'; return; }
-        try {
-            currentUser = JSON.parse(raw);
-            const name = currentUser.full_name || currentUser.username;
-            document.getElementById('userDisplayName').textContent = name;
-            document.getElementById('userRole').textContent = currentUser.role || 'user';
-            document.getElementById('userAvatar').textContent = (name || '?').charAt(0).toUpperCase();
-            const homeEl = document.getElementById('homeUserName');
-            if (homeEl) homeEl.textContent = name;
-        } catch(e) {}
+    // ---- API helper ----
+    // All backend calls go through here: JSON in/out, throws Error(detail) on non-2xx.
+    async function api(path, options = {}) {
+        const opts = { ...options, headers: { 'Content-Type': 'application/json', ...(options.headers || {}) } };
+        if (opts.body && typeof opts.body !== 'string') opts.body = JSON.stringify(opts.body);
+        const res = await fetch(path, opts);
+        let data = null;
+        try { data = await res.json(); } catch (e) {}
+        if (!res.ok) {
+            const detail = data?.detail;
+            throw new Error(typeof detail === 'string' ? detail : `Request failed (${res.status})`);
+        }
+        return data;
     }
 
-    function signOut() {
-        // Save search history before leaving
-        saveUserHistory();
-        sessionStorage.removeItem('user');
-        window.location.href = '/';
+    function esc(value) {
+        return String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    }
+
+    function timeAgo(iso) {
+        if (!iso) return '';
+        const secs = (Date.now() - new Date(iso).getTime()) / 1000;
+        if (isNaN(secs)) return '';
+        if (secs < 60) return 'just now';
+        if (secs < 3600) return `${Math.floor(secs / 60)}m ago`;
+        if (secs < 86400) return `${Math.floor(secs / 3600)}h ago`;
+        return `${Math.floor(secs / 86400)}d ago`;
     }
 
     // ---- Market Indices ----
     async function loadIndices() {
         try {
-            const res  = await fetch('/market_indices');
-            const data = await res.json();
+            const data = await api('/api/market/indices');
             if (!data.length) return;
             document.getElementById('indicesBar').innerHTML = data.map(idx => {
                 const pos   = idx.change_pct >= 0;
@@ -706,15 +693,14 @@
     // ---- Market News ----
     async function loadMarketNews() {
         try {
-            const res  = await fetch('/market_news');
-            const data = await res.json();
+            const data = await api('/api/market/news');
             if (!data.length) { document.getElementById('newsList').innerHTML = '<div style="font-size:0.7rem;color:#444;">No news available.</div>'; return; }
             document.getElementById('newsList').innerHTML = data.map(n => `
                 <a href="${n.url}" target="_blank" rel="noopener noreferrer"
                    style="display:block; margin-bottom:14px; text-decoration:none; padding-bottom:14px; border-bottom:1px solid #333;"
                    onmouseover="this.style.opacity='0.75'" onmouseout="this.style.opacity='1'">
                     <div style="font-size:0.72rem; color:#ccc; line-height:1.45; margin-bottom:4px;">${n.title}</div>
-                    <div style="font-size:0.6rem; color:#555;">${n.publisher} &middot; ${n.time_ago}</div>
+                    <div style="font-size:0.6rem; color:#555;">${n.publisher} &middot; ${timeAgo(n.published_at)}</div>
                 </a>`).join('');
         } catch(e) {}
     }
@@ -727,8 +713,7 @@
 
     async function loadMarketMovers() {
         try {
-            const res  = await fetch('/market_movers');
-            _moversData = await res.json();
+            _moversData = await api('/api/market/movers');
             if (!_moversData.gainers?.length && !_moversData.losers?.length) return;
             if ([0, 6].includes(new Date().getDay())) document.getElementById('marketStatusBadge').style.display = 'inline';
             renderMovers();
@@ -862,16 +847,15 @@
 
     // ---- Yahoo Finance link ----
     function openYahooFinance() {
-        const ticker = currentRawData?.ticker_used;
+        const ticker = currentRawData?.ticker;
         if (ticker) window.open(`https://finance.yahoo.com/quote/${ticker}`, '_blank', 'noopener');
     }
 
     // ---- Watchlist ----
     let _watchlistData = [];
-    const wlCacheKey = () => `wl_${currentUser?.username || ''}`;
+    const wlCacheKey = () => 'wl_local';
 
     async function loadWatchlist() {
-        if (!currentUser) return;
         // Render cached data instantly (synchronous localStorage read)
         try {
             const raw = localStorage.getItem(wlCacheKey());
@@ -882,10 +866,8 @@
     }
 
     async function _refreshWatchlistPrices() {
-        if (!currentUser) return;
         try {
-            const res   = await fetch(`/watchlist?username=${encodeURIComponent(currentUser.username)}`);
-            const fresh = await res.json();
+            const fresh = await api('/api/watchlist');
             _watchlistData = fresh;
             localStorage.setItem(wlCacheKey(), JSON.stringify(fresh));
             renderWatchlist();
@@ -919,8 +901,8 @@
     }
 
     async function toggleWatchlist() {
-        if (!currentUser || !currentRawData) return;
-        const ticker      = (currentRawData.ticker_used || '').toUpperCase();
+        if (!currentRawData) return;
+        const ticker      = (currentRawData.ticker || '').toUpperCase();
         const companyName = currentRawData.company_name || '';
         if (!ticker) return;
         const inList = _watchlistData.some(x => x.ticker === ticker);
@@ -937,13 +919,11 @@
         renderWatchlist();
         // Fire-and-forget: persist to DB and silently refresh price
         if (inList) {
-            fetch(`/watchlist/remove?username=${encodeURIComponent(currentUser.username)}&ticker=${ticker}`, { method: 'DELETE' });
+            api(`/api/watchlist/${encodeURIComponent(ticker)}`, { method: 'DELETE' }).catch(e => showToast(e.message));
         } else {
-            fetch('/watchlist/add', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username: currentUser.username, ticker, company_name: companyName }),
-            }).then(() => _refreshWatchlistPrices());
+            api('/api/watchlist', { method: 'POST', body: { ticker, company_name: companyName } })
+                .then(() => _refreshWatchlistPrices())
+                .catch(e => showToast(e.message));
         }
     }
 
@@ -960,12 +940,12 @@
     async function openSettings() {
         document.getElementById('settingsModal').style.display = 'flex';
         try {
-            const res = await fetch('/settings');
-            const data = await res.json();
-            document.getElementById('settingsLlmKey').value = data.llm_api_key_set ? '***' : '';
-            document.getElementById('settingsLlmModel').value = data.llm_model || 'openai/gpt-4o-mini';
-            document.getElementById('settingsNewsKey').value = data.news_api_key_set ? '***' : '';
-        } catch(e) {}
+            const data = await api('/api/settings');
+            const keyEl = document.getElementById('settingsLlmKey');
+            keyEl.value = '';
+            keyEl.placeholder = data.llm_api_key_set ? 'Saved. Leave blank to keep it' : 'sk-or-...';
+            document.getElementById('settingsLlmModel').value = data.llm_model || data.default_llm_model;
+        } catch(e) { showToast(e.message); }
     }
 
     function closeSettings() {
@@ -982,17 +962,14 @@
     async function saveSettings() {
         const llmKey   = document.getElementById('settingsLlmKey').value.trim();
         const llmModel = document.getElementById('settingsLlmModel').value.trim();
-        const newsKey  = document.getElementById('settingsNewsKey').value.trim();
         const payload  = {};
-        if (llmKey   && llmKey   !== '***') payload.llm_api_key  = llmKey;
-        if (llmModel && llmModel !== '***') payload.llm_model    = llmModel;
-        if (newsKey  && newsKey  !== '***') payload.news_api_key = newsKey;
+        if (llmKey)   payload.llm_api_key = llmKey;
+        if (llmModel) payload.llm_model   = llmModel;
         try {
-            const res  = await fetch('/settings', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
-            const data = await res.json();
-            if (data.success) { closeSettings(); showToast('Settings saved.'); }
-            else showToast('Error: ' + (data.message || 'unknown'));
-        } catch(e) { showToast('Could not save settings.'); }
+            await api('/api/settings', { method: 'PUT', body: payload });
+            closeSettings();
+            showToast('Settings saved.');
+        } catch(e) { showToast('Could not save settings: ' + e.message); }
     }
 
     document.getElementById('settingsModal').addEventListener('click', function(e) {
@@ -1009,7 +986,7 @@
     }
 
     function getUserHistoryKey() {
-        return currentUser ? `history_${currentUser.username}` : 'history_guest';
+        return 'history_local';
     }
 
     function loadUserHistory() {
@@ -1057,7 +1034,6 @@
 
     let debounceTimer;
     let searchHistory = [];
-    loadUserSession();
     loadUserHistory();
     loadWatchlist();
     loadIndices();
@@ -1306,7 +1282,7 @@
             </div>`;
         }
 
-        const ticker = currentRawData?.ticker_used || '';
+        const ticker = currentRawData?.ticker || '';
         const _ratingRow = u => {
             const isUp   = (u.action||'').toLowerCase() === 'upgrade' || ['buy','strong buy','outperform','overweight','positive'].includes((u.to_grade||'').toLowerCase());
             const isDown = (u.action||'').toLowerCase() === 'downgrade' || ['sell','underperform','underweight','negative'].includes((u.to_grade||'').toLowerCase());
@@ -1507,11 +1483,8 @@
             clearTimeout(timer);
             timer = setTimeout(async () => {
                 try {
-                    const response = await fetch(`/search_company?q=${encodeURIComponent(query)}`);
-                    if (!response.ok) throw new Error('Network Error');
-                    const data = await response.json();
-                    if (data.error) throw new Error(data.error);
-                    
+                    const data = await api(`/api/search?q=${encodeURIComponent(query)}`);
+
                     if (data.length === 0) {
                         dropdownEl.innerHTML = '<div class="p-4 text-sm text-center" style="color: var(--text-muted)">No results found.</div>';
                     } else {
@@ -1560,7 +1533,7 @@
 
     // Core search function — callable from initial search, overlay, and chat actions
     async function executeSearch(company, ticker) {
-        if (!company) return;
+        if (!company && !ticker) return;
 
         // Show dashboard if not already visible
         const isInitial = !initialView.classList.contains('hidden');
@@ -1573,50 +1546,56 @@
             dashboardView.classList.remove('opacity-0');
         }
 
-        // Show loading overlay for re-searches within dashboard
         loadingOverlay.classList.remove('hidden');
-
-        let url = `/fetch_supplier_data?company_name=${encodeURIComponent(company)}`;
-        if (ticker) {
-            url += `&ticker=${encodeURIComponent(ticker)}`;
-        }
-
         try {
-            const response = await fetch(url);
-            currentRawData = await response.json();
-
-            populateDashboard(currentRawData);
-            // Calculate average safety score for history dot
-            let avgScore = null;
-            if (currentRawData.health_scores && !currentRawData.health_scores.error) {
-                const st = currentRawData.health_scores.short_term?.score || 0;
-                const lt = currentRawData.health_scores.long_term?.score || 0;
-                avgScore = Math.round((st + lt) / 2);
+            if (!ticker) {
+                const matches = await api(`/api/search?q=${encodeURIComponent(company)}`);
+                if (!matches.length) throw new Error(`No stock found for "${company}".`);
+                ticker = matches[0].ticker;
+                company = matches[0].name;
             }
-            addToNavHistory(company, currentRawData.ticker_used || ticker, avgScore);
-
-            // Handle source flag
-            const btnForceUpdate = document.getElementById('btnForceUpdate');
-            if (currentRawData.source === 'database') {
-                btnForceUpdate.style.display = 'inline-block';
-            } else {
-                btnForceUpdate.style.display = 'none';
-            }
-
-            // If ai_analysis came with the data (from DB or live), render it directly
-            if (currentRawData.ai_analysis && !currentRawData.ai_analysis.error) {
-                renderAiAnalysis(currentRawData.ai_analysis);
-            }
-            // No auto-trigger — user can manually request AI analysis via the button
-
+            await loadStock(ticker, company, false);
         } catch (err) {
             console.error(err);
-            loadingOverlay.innerHTML = `<h2 class="text-red-500 font-bold text-xl">System Error</h2><p>Could not fetch data.</p>`;
-        } finally {
-            if (currentRawData) {
-                loadingOverlay.classList.add('hidden');
+            showToast(err.message, 6000);
+            if (!currentRawData) {   // first search failed: go back to the home screen
+                dashboardView.classList.add('hidden', 'opacity-0');
+                initialView.classList.remove('hidden', 'opacity-0');
             }
+        } finally {
+            loadingOverlay.classList.add('hidden');
         }
+    }
+
+    // Fetch one stock snapshot and render it. Throws on failure.
+    async function loadStock(ticker, company, refresh) {
+        const params = new URLSearchParams({ name: company || '' });
+        if (refresh) params.set('refresh', 'true');
+        const data = await api(`/api/stocks/${encodeURIComponent(ticker)}?${params}`);
+        currentRawData = data;
+        populateDashboard(data);
+        updateAsOf(data);
+
+        let avgScore = null;
+        if (data.health_scores) {
+            const st = data.health_scores.short_term?.score || 0;
+            const lt = data.health_scores.long_term?.score || 0;
+            avgScore = Math.round((st + lt) / 2);
+        }
+        addToNavHistory(data.company_name, data.ticker, avgScore);
+        if (data.warnings?.length) showToast(data.warnings.join(' '), 6000);
+
+        // Show the stored report if there is one; otherwise generate one in the background.
+        if (data.ai_analysis) renderAiAnalysis(data.ai_analysis);
+        else requestAnalysis();
+    }
+
+    function updateAsOf(data) {
+        const el = document.getElementById('asOfLabel');
+        if (!el) return;
+        el.textContent = data.as_of ? `data ${timeAgo(data.as_of)}${data.stale ? ' · offline' : ''}` : '';
+        el.style.color = data.stale ? '#ff9800' : '#666';
+        el.title = data.as_of ? 'Fetched ' + new Date(data.as_of).toLocaleString() : '';
     }
 
     searchBtn.addEventListener('click', () => {
@@ -1665,9 +1644,9 @@
         document.getElementById('riskScenariosSection')?.classList.add('hidden');
 
         // Build Sidebar
-        sbTicker.innerText = data.ticker_used || 'N/A';
-        updateWatchlistStar(data.ticker_used);
-        sbLogoInitials.innerText = (data.ticker_used || data.company_name.substring(0,2)).substring(0,2).toUpperCase();
+        sbTicker.innerText = data.ticker || 'N/A';
+        updateWatchlistStar(data.ticker);
+        sbLogoInitials.innerText = (data.ticker || data.company_name.substring(0,2)).substring(0,2).toUpperCase();
         
         const sbLogoImg = document.getElementById('sbLogoImg');
         sbLogoImg.classList.add('hidden');
@@ -1710,14 +1689,14 @@
         // --- TradingView Widget ---
         const tvContainer = document.getElementById('tradingViewContainer');
         tvContainer.innerHTML = '';
-        if (data.ticker_used) {
+        if (data.ticker) {
             tvContainer.style.display = 'block';
             const tvScript = document.createElement('script');
             tvScript.src = 'https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js';
             tvScript.type = 'text/javascript';
             tvScript.async = true;
             tvScript.innerHTML = JSON.stringify({
-                "autosize": true, "symbol": data.ticker_used, "interval": "D",
+                "autosize": true, "symbol": data.ticker, "interval": "D",
                 "timezone": "Etc/UTC", "theme": "dark", "style": "1",
                 "locale": "en", "allow_symbol_change": false,
                 "backgroundColor": "rgba(19, 23, 34, 1)",
@@ -1795,53 +1774,29 @@
 
         // financeContent kept hidden for agentic-chat tab injection compatibility
 
-        // News Output — Card-based layout (no markdown, clean HTML)
+        // News — headlines from Yahoo Finance for this ticker
         newsContent.innerHTML = '';
-        
-        if (data.signal_metadata) {
-            newsContent.innerHTML += `<div style="padding:12px 16px; background:#1a1a1a; border:1px solid #333; margin-bottom:20px; font-size:0.75rem; color:var(--text-muted); letter-spacing:1px;">
-                SIGNALS: ${data.signal_metadata.relevant_articles_found} / ${data.signal_metadata.total_articles_fetched} articles above threshold (${data.signal_metadata.dynamic_threshold_applied})
-            </div>`;
+        const news = data.news || [];
+        if (news.length === 0) {
+            newsContent.innerHTML = '<p style="color:var(--text-muted); text-align:center; padding:40px;">No recent news found for this stock.</p>';
         }
-
-        if (data.relevant_signals && data.relevant_signals.length > 0 && !data.relevant_signals[0].error) {
-            data.relevant_signals.forEach((sig, idx) => {
-                let urlStr = sig.url || '#';
-                if (urlStr.includes('consent.yahoo.com')) {
-                    urlStr = `https://www.google.com/search?q=${encodeURIComponent(sig.title)}`;
-                }
-                
-                // Extract domain for favicon
-                let faviconUrl = '';
-                try {
-                    const domain = new URL(urlStr).hostname;
-                    faviconUrl = `https://www.google.com/s2/favicons?domain=${domain}&sz=32`;
-                } catch(e) {}
-
-                const scoreColor = sig.semantic_signal_score >= 0.3 ? '#ff6b6b' : sig.semantic_signal_score >= 0.2 ? '#ffa94d' : '#69db7c';
-
-                const card = document.createElement('div');
-                card.style.cssText = 'border:1px solid #333; padding:16px; margin-bottom:12px; background:#1a1a1a; transition: border-color 0.2s;';
-                card.onmouseenter = () => card.style.borderColor = '#555';
-                card.onmouseleave = () => card.style.borderColor = '#333';
-
-                card.innerHTML = `
-                    <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px; margin-bottom:10px;">
-                        <div style="display:flex; align-items:center; gap:8px; flex:1; min-width:0;">
-                            ${faviconUrl ? `<img src="${faviconUrl}" alt="" style="width:16px;height:16px;flex-shrink:0;border-radius:2px;">` : ''}
-                            <a href="${urlStr}" target="_blank" style="color:var(--text-main); font-weight:600; font-size:0.9rem; text-decoration:none; line-height:1.3; overflow:hidden; text-overflow:ellipsis; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;" onmouseover="this.style.color='var(--accent)'" onmouseout="this.style.color='var(--text-main)'">${sig.title}</a>
-                        </div>
-                        <span style="background:${scoreColor}22; color:${scoreColor}; border:1px solid ${scoreColor}44; padding:2px 8px; font-size:0.65rem; font-weight:700; font-family:monospace; white-space:nowrap; flex-shrink:0;">${sig.semantic_signal_score.toFixed(3)}</span>
-                    </div>
-                    <p style="color:var(--text-muted); font-size:0.8rem; line-height:1.5; margin:0;">${sig.description}</p>
-                    <div style="margin-top:8px; font-size:0.65rem; color:#666; text-transform:uppercase; letter-spacing:1px;">${sig.source}</div>
-                `;
-
-                newsContent.appendChild(card);
-            });
-        } else {
-            newsContent.innerHTML += '<p style="color:var(--text-muted); text-align:center; padding:40px;">No highly critical market signals detected in the configured timeframe.</p>';
-        }
+        news.forEach(item => {
+            let domain = '';
+            try { domain = new URL(item.url).hostname; } catch (e) {}
+            const card = document.createElement('div');
+            card.style.cssText = 'border:1px solid #333; padding:16px; margin-bottom:12px; background:#1a1a1a; transition: border-color 0.2s;';
+            card.onmouseenter = () => card.style.borderColor = '#555';
+            card.onmouseleave = () => card.style.borderColor = '#333';
+            card.innerHTML = `
+                <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+                    ${domain ? `<img src="https://www.google.com/s2/favicons?domain=${esc(domain)}&sz=32" alt="" style="width:16px;height:16px;flex-shrink:0;border-radius:2px;">` : ''}
+                    <a href="${esc(item.url)}" target="_blank" rel="noopener noreferrer" style="color:var(--text-main); font-weight:600; font-size:0.9rem; text-decoration:none; line-height:1.3;" onmouseover="this.style.color='var(--accent)'" onmouseout="this.style.color='var(--text-main)'">${esc(item.title)}</a>
+                </div>
+                ${item.summary ? `<p style="color:var(--text-muted); font-size:0.8rem; line-height:1.5; margin:0;">${esc(item.summary)}</p>` : ''}
+                <div style="margin-top:8px; font-size:0.65rem; color:#666; text-transform:uppercase; letter-spacing:1px;">${esc(item.publisher)}${item.published_at ? ' · ' + timeAgo(item.published_at) : ''}</div>
+            `;
+            newsContent.appendChild(card);
+        });
     }
 
     const VERDICT_COLORS = {
@@ -1858,6 +1813,10 @@
         if (!aiData) return;
 
         aiSummary.innerText = aiData.executive_summary || "No summary provided.";
+        const modelLabel = document.getElementById('aiModelLabel');
+        if (modelLabel && aiData.model) {
+            modelLabel.textContent = `Analysed by ${aiData.model}` + (aiData.created_at ? ` · ${new Date(aiData.created_at).toLocaleString()}` : '');
+        }
 
         // Verdict badge
         const verdict = aiData.verdict || {};
@@ -1964,65 +1923,37 @@
 
     // --- 5. AI GENERATION LOGIC ---
 
-    btnAiAnalyze.addEventListener('click', async () => {
-        if (!currentRawData) return;
-        
+    async function requestAnalysis() {
+        if (!currentRawData || btnAiAnalyze.disabled) return;
+        const ticker = currentRawData.ticker;
+
         btnAiAnalyze.disabled = true;
         const orgHtml = btnAiAnalyze.innerHTML;
         btnAiAnalyze.innerHTML = '<div class="spinner w-4 h-4 border-2 mr-2"></div> Standby...';
-        
+
         aiAnalysisResult.classList.add('hidden');
         const aiLoading = document.getElementById('aiLoading');
         const aiProgressBar = document.getElementById('aiProgressBar');
-        
         aiLoading.classList.remove('hidden');
-        // trigger reflow
-        void aiLoading.offsetWidth;
+        void aiLoading.offsetWidth;  // trigger reflow
         aiLoading.classList.remove('opacity-0');
-        
+
         let width = 0;
         const progressInterval = setInterval(() => {
             width += (100 - width) * 0.15;
             aiProgressBar.style.width = width + '%';
         }, 300);
-        
+
         try {
-            const response = await fetch('/analyze_supplier_ai', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(currentRawData)
-            });
-            const data = await response.json();
-            
-            if (data.error) {
-                aiLoading.classList.add('hidden');
-                aiSummary.innerText = 'Analysis failed: ' + data.error;
-                if (data.raw) {
-                    console.error('[AI raw response]', data.raw);
-                    aiAction.innerText = 'Raw response logged to browser console (F12).';
-                } else {
-                    aiAction.innerText = '';
-                }
-                aiAnalysisResult.classList.remove('hidden');
-                return;
-            }
-
-            // Update subtitle with model name
-            try {
-                const res = await fetch('/settings');
-                const s   = await res.json();
-                const m   = s.llm_model || 'Claude Haiku 4.5';
-                document.getElementById('aiModelLabel').textContent = 'Analysed by ' + m;
-            } catch(e) {}
-
-            renderAiAnalysis(data);
-
+            const data = await api(`/api/stocks/${encodeURIComponent(ticker)}/analysis`, { method: 'POST' });
+            if (currentRawData?.ticker === ticker) renderAiAnalysis(data);
         } catch (err) {
-            console.error(err);
-            aiLoading.classList.add('hidden');
-            aiSummary.innerText = 'Request failed — check the server console for details.';
-            aiAction.innerText  = '';
-            aiAnalysisResult.classList.remove('hidden');
+            if (currentRawData?.ticker === ticker) {
+                aiLoading.classList.add('hidden');
+                aiSummary.innerText = 'Analysis failed: ' + err.message;
+                aiAction.innerText = '';
+                aiAnalysisResult.classList.remove('hidden');
+            }
         } finally {
             clearInterval(progressInterval);
             aiProgressBar.style.width = '100%';
@@ -2033,7 +1964,9 @@
                 btnAiAnalyze.innerHTML = orgHtml;
             }, 400);
         }
-    });
+    }
+
+    btnAiAnalyze.addEventListener('click', requestAnalysis);
 
     // Downloads
     function downloadJSON() {
@@ -2041,7 +1974,7 @@
         const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(currentRawData, null, 2));
         const anchor = document.createElement('a');
         anchor.href = dataStr;
-        anchor.download = `Terminal_${currentRawData.ticker_used || 'Export'}.json`;
+        anchor.download = `Terminal_${currentRawData.ticker || 'Export'}.json`;
         anchor.click();
     }
 
@@ -2123,22 +2056,18 @@
         thinkingBox.innerHTML = '<div class="flex items-center gap-2"><div class="spinner w-3 h-3 border-2"></div><span style="color:var(--text-muted); font-size:0.75rem;">Processing query...</span></div>';
 
         try {
-            const response = await fetch('/chat_ai', {
+            const result = await api('/api/chat', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
+                body: {
                     question: question,
-                    context: currentRawData || {},
-                    ai_analysis: currentRawData?.ai_analysis || {},
-                    conversation_history: conversationMessages,
-                    existing_chart_titles: getExistingChartTitles()
-                })
+                    stock: currentRawData,
+                    history: conversationMessages,
+                    existing_chart_titles: getExistingChartTitles(),
+                },
             });
-            const result = await response.json();
-            
-            if (result.error) {
-                thinkingBox.innerText = "Error: " + result.error;
-                thinkingBox.style.color = '#ff6b6b';
+
+            if (!result) {
+                thinkingBox.innerText = "No response.";
             } else {
                 const replyText = result.reply_text || result.answer || "No response.";
                 thinkingBox.innerHTML = marked.parse(replyText);
@@ -2173,7 +2102,7 @@
                 }
             }
         } catch(err) {
-            thinkingBox.innerText = "Connection error: " + err.message;
+            thinkingBox.innerText = "Error: " + err.message;
             thinkingBox.style.color = '#ff6b6b';
         }
         chatHistory.scrollTop = chatHistory.scrollHeight;
@@ -2304,33 +2233,19 @@
     // Force Update: bypass cache and re-fetch fresh data
     async function forceUpdateSupplier() {
         if (!currentRawData) return;
-        const btnForceUpdate = document.getElementById('btnForceUpdate');
-        btnForceUpdate.innerText = 'UPDATING...';
-        btnForceUpdate.style.opacity = '0.5';
-
+        const btn = document.getElementById('btnForceUpdate');
+        btn.innerText = 'REFRESHING...';
+        btn.style.opacity = '0.5';
+        btn.disabled = true;
         try {
-            const response = await fetch('/force_update_supplier', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    company_name: currentRawData.company_name,
-                    ticker: currentRawData.ticker_used
-                })
-            });
-            const freshData = await response.json();
-            currentRawData = freshData;
-            populateDashboard(freshData);
-
-            if (freshData.ai_analysis && !freshData.ai_analysis.error) {
-                renderAiAnalysis(freshData.ai_analysis);
-            }
-
-            btnForceUpdate.style.display = 'none';
-        } catch(err) {
-            console.error('Force update error:', err);
-            btnForceUpdate.innerText = 'RETRY';
+            await loadStock(currentRawData.ticker, currentRawData.company_name, true);
+        } catch (err) {
+            showToast(err.message, 6000);
+        } finally {
+            btn.innerText = 'REFRESH';
+            btn.style.opacity = '1';
+            btn.disabled = false;
         }
-        btnForceUpdate.style.opacity = '1';
     }
 
     oldChatSendBtn.addEventListener('click', () => {
