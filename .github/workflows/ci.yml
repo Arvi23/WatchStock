@@ -18,8 +18,27 @@ jobs:
       - run: uv run ruff check .
       - run: uv run ruff format --check .
       - run: uv run pytest
-      - name: Frontend script parses
-        if: runner.os == 'Linux'
+
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: uv sync --frozen
+      - run: npm ci
+      - name: Scripts parse
+        run: for f in static/js/*.js scripts/*.js scripts/*.mjs; do node --check "$f"; done
+      - name: Vendored files and compiled CSS are up to date
         run: |
-          python3 -c "import re;s=open('static/index.html',encoding='utf-8').read();open('/tmp/app.js','w').write(re.findall(r'<script>(.*?)</script>',s,re.S)[-1])"
-          node --check /tmp/app.js
+          npm run build
+          git diff --exit-code -- static/vendor static/css
+      - run: npx playwright install --with-deps chromium
+      - name: UI smoke test (fake data)
+        run: |
+          uv run python scripts/fake_server.py &
+          for i in $(seq 1 30); do curl -sf http://127.0.0.1:8001/api/health && break; sleep 1; done
+          node scripts/ui_smoke.js

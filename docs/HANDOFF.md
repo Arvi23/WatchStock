@@ -46,12 +46,19 @@ Read this first. Update it at the end of every batch or before your context runs
 - [x] Default model `nvidia/nemotron-3.5-super-vl:free` (owner's choice for trials); LLM timeout 150 s
 - [x] Snapshot `schema` version (D9): old cached snapshots are refetched, not rendered broken
 
-### Batch 3 — Frontend cleanup
-- Split `static/index.html` into `index.html` + `css/` + `js/` ES modules
-- Vendor + pin Chart.js, marked, DOMPurify; sanitise LLM HTML; fix marked link renderer (broken in marked ≥13)
-- Tailwind Play CDN → decide (D6)
-- Show data age ("as of"), currency-aware formatting, simpler settings
-- Drop the chat's HTML-injection UI action
+### Batch 3 — Frontend cleanup  *(branch `batch-3-frontend`, PR #3, stacked on #2)* ✅
+- [x] `static/index.html` split into `css/app.css` + 10 classic scripts in `js/` (D11)
+- [x] Chart.js 4.6.1, marked 18.1.3, DOMPurify 3.4.17, Inter 5.3.0 vendored + pinned; no CDNs left
+      except TradingView and logos
+- [x] Tailwind Play CDN → precompiled `css/tailwind.css` (Tailwind 3.4.19); CI checks it's fresh
+- [x] All LLM markdown sanitised (`renderMarkdown`, images forbidden); chat's raw-HTML
+      `update_tab_content` action removed
+- [x] Currency-aware money (`fmtMoney`/`fmtBig`): prices in `currency`, FCF in `financialCurrency`,
+      GBp/ZAc/ILA minor units, compact $3.08T style; watchlist quotes carry currency
+- [x] Plain-language wording (Analyze, New AI report, Ask about this stock, disclaimer line)
+- [x] Markdown styles for AI text (headings, lists, quotes)
+- [x] `scripts/ui_smoke.js` is now a pass/fail browser test (sanitising, currencies, breakdowns,
+      watchlist, refresh, chat, no-key hint, failure toast) and runs in CI
 
 ### Batch 4 — Portfolio
 - Holdings (ticker, shares, cost basis, currency), P/L, allocation by sector/country,
@@ -62,18 +69,19 @@ Read this first. Update it at the end of every batch or before your context runs
 - Industry peer comparison; thesis tracking ("why I bought" checked against new data)
 
 ## Status
-Batches 1 and 2 done. PR #1 and PR #2 (stacked) green on CI and waiting for the owner to
-merge. Files copied to the owner's folder. Next: batch 3 (frontend cleanup).
+Batches 1-3 done. PRs #1, #2, #3 (stacked) wait for the owner to merge; files are copied
+to the owner's folder after each batch. Next: batch 4 (portfolio).
 
 Notes for the next agent:
-- The chat still supports `update_tab_content` on the frontend (raw HTML). The backend
-  prompt no longer offers it; remove the frontend handler in batch 3 with DOMPurify.
-- The Tailwind Play CDN, Chart.js and marked still load from CDNs (marked unpinned; the
-  link renderer uses the >=13 token API). Batch 3 vendors them into `static/vendor/`.
-- For screenshots in the sandbox: run `scripts/fake_server.py`, then `scripts/ui_smoke.js`
-  (header explains how it serves CDN scripts from npm copies).
-- Money is still formatted with `$` everywhere in the frontend; statement values (FCF,
-  revenue) should use `financialCurrency`, prices `currency`. Batch 3.
+- Batch 4 plan: `holdings` table (ticker, shares, avg cost, currency, opened_at, notes) via a new
+  migration; `/api/portfolio` returning positions with live quotes, P/L, weights, sector/country
+  allocation (sector from the cached snapshot, else a light `fetch_profile`), concentration flags
+  (single position > 20%, sector > 40%), projected annual dividends. UI: a "Portfolio" view on the
+  home screen next to the watchlist; keep it to one table + two small allocation charts.
+  Multi-currency totals: show per-currency subtotals rather than inventing FX conversion; dad is
+  mostly USD.
+- For screenshots/tests: `scripts/fake_server.py` + `node scripts/ui_smoke.js` (needs
+  `PLAYWRIGHT_BROWSERS_PATH` pointing at a Chromium matching playwright 1.63.0).
 - The old hackathon DB (`watchstock.db` at repo root) is not migrated; the new DB is
   `data/watchstock.db`.
 
@@ -91,6 +99,12 @@ Batch 2:
 - [ ] MSFT dividend yield shows ~0.8%, not 80%
 - [ ] Request a second report on the same stock → "Since the Last Report" section appears
 - [ ] If anything misbehaves: send `data\watchstock.log`
+
+Batch 3:
+- [ ] Looks the same as before (fonts, layout, colours), with nothing loaded from CDNs
+- [ ] AI report: headings/bullets readable, links clickable
+- [ ] `TLV.RO` shows prices in RON (e.g. "RON 29.50"), MSFT in $
+- [ ] Market cap shows compact (e.g. "$3.08T")
 
 ## Open questions for the owner
 - (answered) Dad holds mostly US stocks → currency formatting stays in batch 3, no rush.

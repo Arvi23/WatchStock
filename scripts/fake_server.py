@@ -29,6 +29,13 @@ def fetch_profile(ticker):
     if ticker == "FAIL":
         raise yahoo.MarketDataError("429 Too Many Requests (fake)")
     p = copy.deepcopy(SAMPLE_PROFILE)
+    m = p["metrics"]
+    if ticker.endswith(".RO"):  # Bucharest: everything in RON
+        p["name"] = "Banca Transilvania S.A."
+        m.update(currency="RON", financialCurrency="RON", currentPrice=29.5, marketCap=2.4e10)
+    elif ticker == "TSM":  # US-listed, statements in TWD
+        p["name"] = "Taiwan Semiconductor Manufacturing"
+        m.update(currency="USD", financialCurrency="TWD", freeCashflow=9e11, marketCap=1.1e12)
     p["upgrades_downgrades"] = [
         {"date": "2026-10-2" + str(i), "firm": f"Firm {i}", "from_grade": "Hold",
          "to_grade": "Buy", "action": "up"} for i in range(7)
@@ -86,7 +93,10 @@ REPORT = {
     "executive_summary": "Fake report: strong franchise, fair-to-rich valuation.",
     "verdict": {"action": "BUY", "confidence": 68, "horizon": "12 months"},
     "recommended_action": "Accumulate on pullbacks.",
-    "financial_deep_dive": "## Margins\n**Operating margin 45%**. See [source](https://example.com).",
+    # The <img onerror> is a deliberate XSS probe: the UI must sanitise it away.
+    "financial_deep_dive": "## Margins\n**Operating margin 45%**. See [source](https://example.com)."
+    '\n\n<img src="https://probe.invalid/x.png" onerror="window.__xss=1">'
+    "<script>window.__xss=1</script>",
     "news_impact_analysis": "## News\n- Cloud growth beat.",
     "risk_scenarios": "## Bull Case\nUp.\n## Base Case\nFlat.\n## Bear Case\nDown.",
     "charts": [{"chart_type": "bar", "labels": ["P/E", "Fwd P/E"], "values": [33.4, 29.3],
@@ -97,7 +107,10 @@ REPORT = {
 def complete(messages, *, api_key, model, json_mode=True):
     if "COMPANY CONTEXT" in messages[0]["content"]:
         return json.dumps({"reply_text": "Fake chat answer.", "ui_action": None})
-    return json.dumps(REPORT)
+    report = dict(REPORT)
+    if "previous_report" in messages[-1]["content"]:
+        report["changes_since_last"] = "- Nothing material changed (fake)."
+    return json.dumps(report)
 
 
 def install_fakes():

@@ -30,6 +30,7 @@ async def watchlist() -> list[dict[str, Any]]:
         quote = quotes.get(item["ticker"], {})
         item["price"] = quote.get("price")
         item["change_pct"] = quote.get("change_pct")
+        item["currency"] = quote.get("currency")
     return items
 
 
