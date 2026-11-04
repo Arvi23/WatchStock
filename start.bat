@@ -1,27 +1,36 @@
 @echo off
-echo ============================================
-echo   WatchStock - Starting
-echo ============================================
-echo.
+setlocal
+cd /d "%~dp0"
+title WatchStock
 
-if not exist ".venv\Scripts\activate.bat" (
-    echo [!] Virtual environment not found.
-    echo     Please run setup.bat first.
+rem ---------------------------------------------------------------------------
+rem  WatchStock launcher. Double-click to start. Close the window to stop.
+rem  First run installs "uv" (a small Python manager), which then downloads the
+rem  right Python version and libraries into this folder. Later runs are fast.
+rem ---------------------------------------------------------------------------
+
+where uv >nul 2>&1
+if errorlevel 1 (
+    if not exist "%USERPROFILE%\.local\bin\uv.exe" (
+        echo First run: installing uv...
+        powershell -NoProfile -ExecutionPolicy ByPass -Command "irm https://astral.sh/uv/install.ps1 | iex"
+    )
+    set "PATH=%USERPROFILE%\.local\bin;%PATH%"
+)
+
+where uv >nul 2>&1
+if errorlevel 1 (
     echo.
+    echo [ERROR] Could not install uv. Check the internet connection and try again.
+    echo         Manual install: https://docs.astral.sh/uv/getting-started/installation/
     pause
     exit /b 1
 )
 
-call .venv\Scripts\activate.bat
-
-echo Starting server...
-echo.
-echo   Open your browser at: http://localhost:8000
-echo.
-echo   Press Ctrl+C to stop.
-echo.
-
-REM Open browser after server has had time to start
-start "" /B cmd /c "timeout /t 5 /nobreak >nul && start http://localhost:8000"
-
-python main.py
+echo Starting WatchStock... (the first start can take a few minutes)
+uv run --frozen --no-dev python -m watchstock
+if errorlevel 1 (
+    echo.
+    echo [ERROR] WatchStock stopped with an error. See the messages above.
+    pause
+)

@@ -1,31 +1,26 @@
-# Virtual Environment
+# Python / uv
 .venv/
-venv/
-ENV/
-env/
-
-# Python Cache
 __pycache__/
 *.py[cod]
-*$py.class
+.pytest_cache/
+.ruff_cache/
 
-# Environment Variables
+# Local data (DB with watchlist, settings incl. API key)
+data/
+*.db
+*.db-shm
+*.db-wal
+
+# Secrets
 .env
 .env.local
 
-# ML Models
-models/
-sentence_transformers/
-.cache/
-
-# IDE/OS files
+# IDE / OS
 .DS_Store
 .vscode/
 .idea/
 
-# Archive & Claude memory
+# Local leftovers from the hackathon
 _archive/
-.claude/
-
-# Local database
-*.db
+.claude/settings.local.json
+node_modules/

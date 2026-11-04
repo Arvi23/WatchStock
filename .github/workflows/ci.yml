@@ -1,0 +1,25 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]  # the end user is on Windows
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - run: uv sync --frozen
+      - run: uv run ruff check .
+      - run: uv run ruff format --check .
+      - run: uv run pytest
+      - name: Frontend script parses
+        if: runner.os == 'Linux'
+        run: |
+          python3 -c "import re;s=open('static/index.html',encoding='utf-8').read();open('/tmp/app.js','w').write(re.findall(r'<script>(.*?)</script>',s,re.S)[-1])"
+          node --check /tmp/app.js
