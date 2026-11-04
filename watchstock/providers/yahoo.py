@@ -250,6 +250,28 @@ def fetch_key_metrics(ticker: str) -> dict[str, Any]:
     return out
 
 
+def fetch_company_basics(ticker: str) -> dict[str, Any]:
+    """Name, sector, country, currency and dividend rate: one `info` request.
+
+    Used to fill in portfolio allocation for imported positions without fetching the
+    full stock profile (news, ratings, insiders, peers) for every holding.
+    """
+    try:
+        info = yf.Ticker(ticker).info or {}
+    except Exception as exc:
+        raise MarketDataError(f"Yahoo Finance request failed for {ticker}: {exc}") from exc
+    name = info.get("longName") or info.get("shortName")
+    if not name:
+        raise MarketDataError(f"No data found for ticker {ticker!r}")
+    return {
+        "name": name,
+        "sector": info.get("sector"),
+        "country": info.get("country"),
+        "currency": info.get("currency"),
+        "dividend_rate": _clean(info.get("dividendRate")),
+    }
+
+
 # ------------------------------------------------------------------- events
 
 

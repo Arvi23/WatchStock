@@ -22,6 +22,8 @@ DYNAMIC_TEMPLATES = [
     "Trailing P/E", "Forward P/E", "Strong Buy", "Buy", "Hold", "Underperform", "Sell",
     *scoring.PILLAR_LABELS.values(), "Strong Opportunity", "Moderate Opportunity", "Neutral", "Weak", "Avoid",
     "conflict-exposed region", "emerging market",
+    "The file is empty or not a table.",
+    "Unrecognised file. Use a Tradeville portfolio export, or a CSV with ticker, shares and avg_cost columns.",
 ]  # fmt: skip
 
 

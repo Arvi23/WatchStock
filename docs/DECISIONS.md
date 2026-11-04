@@ -122,3 +122,17 @@ now computed at serve time from the cached snapshot (cheap, language-aware, and 
 changes apply without refetching). Switching language reloads the page. Numbers and dates
 follow the locale (1.234,56 in Romanian). Stored AI reports stay in the language they were
 written in. Tests enforce dictionary completeness.
+
+## D16 — Portfolio import: preview first, verify every ticker, light background info (2026-11-04)
+The owner's dad keeps his positions in Tradeville, so typing ~36 positions by hand was the
+real obstacle. Import is two calls: `preview` parses the file and checks every ticker (one
+batch quote call; an ISIN search for the ones that fail; an ISIN hit that would duplicate
+another row is rejected) and saves nothing; `commit` writes the rows the user kept. Rows that
+can't be verified can't be imported until the user types a ticker that verifies, so the
+portfolio never holds an unpriced typo. "Replace" is the default because a broker export is
+the full portfolio; "why I own it" notes survive either mode. Opening all 36 stocks just to get
+sectors would cost ~10 Yahoo calls each, so the import fetches one light `info` call per new
+ticker in the background (`company_info` table, migration 4) and the portfolio re-polls while
+`info_pending > 0`; if the app was closed mid-way, the next portfolio load resumes it. Failed
+fetches are not saved. Parsing is pure (`importers.py`) and tested on a synthetic fixture: the
+real export contains the family's holdings and stays out of the repo.

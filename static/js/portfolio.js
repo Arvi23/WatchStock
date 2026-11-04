@@ -4,11 +4,18 @@
 
 let _portfolio = null;
 let _allocCharts = [];
+let _infoPolls = 0;  // re-polls while sector/dividend info loads after an import
+let _infoTimer = null;
 
 async function loadPortfolio() {
     try {
         _portfolio = await api('/api/portfolio');
         renderPortfolio();
+        clearTimeout(_infoTimer);
+        if (_portfolio.info_pending && _infoPolls < 8) {
+            _infoPolls++;
+            _infoTimer = setTimeout(loadPortfolio, 15000);
+        }
     } catch (e) {
         document.getElementById('portfolioTable').innerHTML =
             `<div style="font-size:0.7rem; color:#ff6b6b; padding:12px 0;">${esc(t("Couldn't load the portfolio: {msg}", { msg: e.message }))}</div>`;
@@ -41,7 +48,8 @@ function renderPortfolio() {
         charts.style.display = 'none';
         flags.innerHTML = '';
         table.innerHTML = `<div style="background:#1a1a1a; border:1px dashed #333; padding:18px; font-size:0.75rem; color:#888; line-height:1.6; text-align:center;">
-            No positions yet. Add the stocks you own to see their value, profit/loss,<br>allocation and expected dividends in one place.</div>`;
+            No positions yet. Add the stocks you own to see their value, profit/loss,<br>allocation and expected dividends in one place.<br>
+            <span style="color:#666;">Using Tradeville? Click IMPORT and pick your portfolio export.</span></div>`;
         return;
     }
 
@@ -95,7 +103,8 @@ function renderPortfolio() {
 
     flags.innerHTML = p.flags.map(f =>
         `<div style="font-size:0.68rem; color:#ff9800; background:#1a1a1a; border:1px solid #333; padding:7px 10px; margin-top:8px;">⚠ ${esc(f)}</div>`
-    ).join('');
+    ).join('') + (p.info_pending ? `<div style="font-size:0.65rem; color:#666; margin-top:8px;">${esc(t(
+        p.info_pending === 1 ? 'Loading sector and dividend info for {n} stock...' : 'Loading sector and dividend info for {n} stocks...', { n: p.info_pending }))}</div>` : '');
 }
 
 function doughnut(canvasId, items) {

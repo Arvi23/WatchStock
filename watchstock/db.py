@@ -63,6 +63,15 @@ MIGRATIONS: list[str] = [
     );
     CREATE INDEX idx_thesis_ticker ON thesis_checks (ticker, created_at);
     """,
+    # 4 — light company facts (sector, country, dividend rate) for positions that were
+    # imported without opening the stock; snapshots take precedence when they exist
+    """
+    CREATE TABLE company_info (
+        ticker     TEXT PRIMARY KEY,
+        data       TEXT NOT NULL,
+        fetched_at TEXT NOT NULL
+    );
+    """,
 ]
 
 

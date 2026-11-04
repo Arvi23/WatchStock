@@ -58,7 +58,14 @@ def fetch_quotes(tickers):
     def chg(t):
         return -6.5 if t == "NVDA" else 1.2  # NVDA: a "big move" for the Today panel
 
-    return {t: {"price": 100.0, "change_pct": chg(t), "currency": cur(t)} for t in tickers}
+    # OLDNAME: a symbol Yahoo doesn't know (tests the import's "not found" path)
+    return {t: {"price": 100.0, "change_pct": chg(t), "currency": cur(t)}
+            for t in tickers if t != "OLDNAME"}  # fmt: skip
+
+
+def fetch_company_basics(ticker):
+    return {"name": f"{ticker} Inc", "sector": "Industrials", "country": "United States",
+            "currency": "USD", "dividend_rate": 0.5}  # fmt: skip
 
 
 def fetch_industry_peers(industry_key, limit=8):
@@ -174,7 +181,8 @@ def complete(messages, *, api_key, model, json_mode=True):
 
 def install_fakes():
     for fn in (fetch_profile, fetch_news, fetch_quotes, fetch_indices, fetch_market_news,
-               fetch_movers, search, fetch_events, fetch_industry_peers, fetch_key_metrics):  # fmt: skip
+               fetch_movers, search, fetch_events, fetch_industry_peers, fetch_key_metrics,
+               fetch_company_basics):  # fmt: skip
         setattr(yahoo, fn.__name__, fn)
     openrouter.complete = complete
 
