@@ -1,6 +1,7 @@
 """Shared fixtures. Tests never touch the network: providers are replaced by fakes."""
 
 import copy
+import re
 
 import pytest
 from fastapi.testclient import TestClient
@@ -72,9 +73,24 @@ class FakeYahoo:
             raise self.news_error
         return copy.deepcopy(SAMPLE_NEWS)
 
+    unknown_tickers: set = set()  # fetch_quotes returns nothing for these
+    isin_map: dict = {}  # ISIN -> ticker, for search()
+
     def fetch_quotes(self, tickers):
         self.calls.append(("quotes", tuple(tickers)))
-        return {t: {"price": 100.0, "change_pct": 1.5} for t in tickers}
+        return {
+            t: {"price": 100.0, "change_pct": 1.5} for t in tickers if t not in self.unknown_tickers
+        }
+
+    def fetch_company_basics(self, ticker):
+        self.calls.append(("basics", ticker))
+        return {
+            "name": f"{ticker} Inc",
+            "sector": "Technology",
+            "country": "United States",
+            "currency": "USD",
+            "dividend_rate": 1.0,
+        }
 
     def _market(self, name, value):
         self.calls.append((name,))
@@ -117,6 +133,11 @@ class FakeYahoo:
 
     def search(self, query, limit=6):
         self.calls.append(("search", query))
+        if query in self.isin_map:
+            t = self.isin_map[query]
+            return [{"name": t, "ticker": t, "exchange": "NYSE", "type": "EQUITY"}]
+        if re.fullmatch(r"[A-Z]{2}[A-Z0-9]{9}\d", query):
+            return []  # unknown ISIN
         return [
             {
                 "name": "Microsoft Corporation",
@@ -160,7 +181,7 @@ def fake_yahoo(monkeypatch):
     fake = FakeYahoo()
     for name in ("fetch_profile", "fetch_news", "fetch_quotes", "fetch_indices",
                  "fetch_market_news", "fetch_movers", "search", "fetch_events",
-                 "fetch_industry_peers", "fetch_key_metrics"):  # fmt: skip
+                 "fetch_industry_peers", "fetch_key_metrics", "fetch_company_basics"):  # fmt: skip
         monkeypatch.setattr(yahoo, name, getattr(fake, name))
     return fake
 

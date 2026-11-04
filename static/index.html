@@ -104,6 +104,7 @@
                         <span style="font-size:0.7rem; letter-spacing:1.5px; color:var(--text-muted);">MY PORTFOLIO</span>
                         <div style="display:flex; gap:8px; align-items:center;">
                             <button onclick="loadPortfolio()" title="Refresh prices" style="background:transparent; border:none; color:#666; cursor:pointer; font-size:0.85rem; padding:0 4px;">↻</button>
+                            <button id="btnImport" onclick="openImportModal()" title="Load positions from a Tradeville export or a CSV file" style="background:transparent; border:1px solid #444; color:#aaa; padding:4px 10px; font-size:0.65rem; font-weight:700; letter-spacing:1px; cursor:pointer;">IMPORT</button>
                             <button id="btnAddHolding" onclick="openHoldingModal()" style="background:transparent; border:1px solid var(--accent); color:var(--accent); padding:4px 10px; font-size:0.65rem; font-weight:700; letter-spacing:1px; cursor:pointer;">+ ADD POSITION</button>
                         </div>
                     </div>
@@ -543,6 +544,35 @@
         </div>
     </div>
 
+    <!-- Import positions from a file (static/js/import.js) -->
+    <div id="importModal" style="display:none; position:fixed; inset:0; z-index:2000; background:rgba(0,0,0,0.75); backdrop-filter:blur(4px); align-items:center; justify-content:center;">
+        <div style="background:#1a1a1a; border:1px solid #333; width:820px; max-width:94vw; max-height:90vh; display:flex; flex-direction:column;">
+            <div style="padding:16px 20px; border-bottom:1px solid #333; display:flex; justify-content:space-between; align-items:center;">
+                <h3 style="font-size:0.75rem; font-weight:700; color:#fff; letter-spacing:2px; margin:0; text-transform:uppercase;">Import positions</h3>
+                <button onclick="closeImportModal()" style="color:#666; font-size:1.1rem; background:none; border:none; cursor:pointer; padding:4px; line-height:1;">✕</button>
+            </div>
+            <div style="padding:20px 24px; overflow-y:auto;">
+                <div id="importPick">
+                    <ol style="margin:0 0 16px 18px; padding:0; font-size:0.75rem; color:#bbb; line-height:1.7; list-style:decimal;">
+                        <li>In Tradeville, open your portfolio and export it to a file.</li>
+                        <li>Pick that file below. You will see a preview first; nothing is saved until you confirm.</li>
+                    </ol>
+                    <label class="imp-file">
+                        <input id="importFile" type="file" accept=".csv,.txt,.tsv,text/csv,text/plain" onchange="onImportFile(this)" style="display:none;">
+                        <span>CHOOSE FILE</span>
+                    </label>
+                    <div style="font-size:0.62rem; color:#555; margin-top:10px;">Any CSV with ticker, shares and avg_cost columns works too.</div>
+                </div>
+                <div id="importPreview" style="display:none;"></div>
+                <div id="importError" style="display:none; color:#ff6b6b; font-size:0.72rem; margin-top:10px;"></div>
+            </div>
+            <div style="padding:14px 24px; border-top:1px solid #333; display:flex; justify-content:flex-end; gap:10px;">
+                <button onclick="closeImportModal()" style="background:transparent; border:1px solid #333; color:#666; padding:8px 18px; font-size:0.7rem; letter-spacing:1px; cursor:pointer;">CANCEL</button>
+                <button id="btnCommitImport" onclick="commitImport()" disabled style="background:var(--accent); border:none; color:#fff; padding:8px 20px; font-size:0.7rem; font-weight:700; letter-spacing:1px; cursor:pointer; opacity:0.4;">IMPORT</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Score Breakdown Popover -->
     <div id="scoreBreakdownPopover" style="display:none; position:fixed; z-index:3000; background:#1e1e1e; border:1px solid #444; padding:16px; width:290px; box-shadow:0 8px 32px rgba(0,0,0,0.7); pointer-events:all;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; border-bottom:1px solid #333; padding-bottom:10px;">
@@ -573,6 +603,7 @@
 <script src="/static/js/settings.js"></script>
 <script src="/static/js/home.js"></script>
 <script src="/static/js/portfolio.js"></script>
+<script src="/static/js/import.js"></script>
 <script src="/static/js/today.js"></script>
 <script src="/static/js/dashboard.js"></script>
 <script src="/static/js/analysis.js"></script>

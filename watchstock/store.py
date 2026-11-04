@@ -188,3 +188,47 @@ def latest_thesis_check(ticker: str) -> dict[str, Any] | None:
         return None
     return {**json.loads(row["content"]), "created_at": row["created_at"],
             "model": row["model"], "thesis": row["thesis"]}  # fmt: skip
+
+
+# ------------------------------------------------------------- company info
+
+
+def get_company_info(ticker: str) -> dict[str, Any] | None:
+    with db.session() as conn:
+        row = conn.execute("SELECT data FROM company_info WHERE ticker = ?", (ticker,)).fetchone()
+    return json.loads(row["data"]) if row else None
+
+
+def save_company_info(ticker: str, data: dict[str, Any]) -> None:
+    with db.session() as conn:
+        conn.execute(
+            "INSERT INTO company_info (ticker, data, fetched_at) VALUES (?, ?, ?) "
+            "ON CONFLICT(ticker) DO UPDATE SET "
+            "data = excluded.data, fetched_at = excluded.fetched_at",
+            (ticker, json.dumps(data, default=str), utcnow_iso()),
+        )
+
+
+def replace_holdings(rows: list[dict[str, Any]]) -> None:
+    """Replace the whole portfolio in one transaction (import with "replace")."""
+    now = utcnow_iso()
+    with db.session() as conn:
+        conn.execute("DELETE FROM holdings")
+        values = [
+            (
+                r["ticker"],
+                r["shares"],
+                r["avg_cost"],
+                r.get("currency"),
+                r.get("notes", ""),
+                now,
+                now,
+            )
+            for r in rows
+        ]
+        conn.executemany(
+            "INSERT INTO holdings "
+            "(ticker, shares, avg_cost, currency, notes, added_at, updated_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?)",
+            values,
+        )

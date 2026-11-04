@@ -8,13 +8,15 @@ watchstock/app.py            FastAPI app factory, error → 502 mapping, static 
    ├── routes/stocks.py      /api/search, /api/stocks/{t}, /api/stocks/{t}/analysis, /api/chat
    ├── routes/market.py      /api/market/{indices,news,movers}   (TTL-cached, degrade to empty)
    ├── routes/personal.py    /api/watchlist, /api/settings
-   ├── routes/portfolio.py   /api/portfolio (GET overview, PUT/DELETE position, GET/POST {t}/thesis)
+   ├── routes/portfolio.py   /api/portfolio (GET overview, PUT/DELETE position, GET/POST {t}/thesis,
+   │                         POST import/preview, import/commit)
    └── routes/today.py       /api/today (events for held + watched stocks)
         │
         ├── services.py      snapshot freshness: cache hit / live fetch / stale fallback
         ├── scoring.py       pure scoring functions → opportunity pillars + safety, with breakdowns
         ├── i18n.py          English/Romanian: tr(), num(), request language (cookie → ContextVar)
         ├── symbols.py       Yahoo ↔ TradingView ticker translation
+        ├── importers.py     pure file parsing: Tradeville export, generic CSV → positions
         ├── portfolio.py     pure portfolio math: value, P/L, weights, allocation, flags, dividends
         ├── today.py         pure "Today" event builder (earnings, ex-div, moves, ratings, insider buys)
         ├── peers.py         pure industry-peer comparison (medians, relative %, table rows)
@@ -42,6 +44,7 @@ watchstock/app.py            FastAPI app factory, error → 502 mapping, static 
 | `js/settings.js` | settings modal |
 | `js/home.js` | indices, market news, movers, watchlist, search history |
 | `js/portfolio.js` | portfolio totals/table/doughnuts, add/edit modal, thesis check, "you own" line |
+| `js/import.js` | import modal: read file, preview table, ticker fixes, replace/merge, commit |
 | `js/today.js` | "Your stocks · next 2 weeks" panel |
 | `js/dashboard.js` | sidebar, finance tab, metric cards, news tab |
 | `js/analysis.js` | AI report rendering/requesting, JSON export |
@@ -113,6 +116,7 @@ opens the browser. See D10.
 | `analyses` | every successful AI report (JSON) + model + `created_at` |
 | `holdings` | one row per position: shares, avg cost, currency, notes ("why I own it") |
 | `thesis_checks` | every thesis check (JSON: status, summary, supporting, against, watch) + the thesis text |
+| `company_info` | light facts (name, sector, country, currency, dividend rate) for positions never opened; snapshots win |
 
 ## Testing
 

@@ -150,6 +150,13 @@ body {
 .pf-stock span { color: #888; font-size: 0.65rem; margin-left: 6px; }
 .pf-edit { background: transparent; border: 1px solid #333; color: #888; cursor: pointer; font-size: 0.6rem; padding: 2px 7px; }
 .pf-edit:hover { color: #fff; border-color: #555; }
+/* import modal */
+.imp-file { display: inline-block; border: 1px dashed var(--accent); color: var(--accent); padding: 12px 22px; font-size: 0.72rem; font-weight: 700; letter-spacing: 1px; cursor: pointer; }
+.imp-file:hover { background: #1f1f1f; }
+.imp-table td { vertical-align: top; }
+.imp-mode { display: flex; gap: 10px; align-items: flex-start; font-size: 0.74rem; color: #ddd; margin: 8px 0; cursor: pointer; line-height: 1.4; }
+.imp-mode input { margin-top: 3px; accent-color: var(--accent); }
+.imp-sub { font-size: 0.65rem; color: #777; }
 .pf-cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 12px; }
 .pf-card { background: #1a1a1a; border: 1px solid #333; padding: 10px 12px; }
 .pf-card .k { font-size: 0.58rem; letter-spacing: 1px; color: #888; text-transform: uppercase; }

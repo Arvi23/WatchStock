@@ -140,6 +140,9 @@ RO: dict[str, str] = {
     "An analyst": "Un analist",
     "Insider buy: {who}{amount}": "Cumpărare de insider: {who}{amount}",
     "An insider": "Un insider",
+    # ---- import
+    "The file is empty or not a table.": "Fișierul e gol sau nu e un tabel.",
+    "Unrecognised file. Use a Tradeville portfolio export, or a CSV with ticker, shares and avg_cost columns.": "Fișier nerecunoscut. Folosește exportul de portofoliu din Tradeville sau un CSV cu coloanele ticker, shares și avg_cost.",
     # ---- services / routes / analysis
     "News could not be loaded.": "Știrile nu au putut fi încărcate.",
     "Live data unavailable ({err}). Showing the last saved data.": "Datele live nu sunt disponibile ({err}). Se afișează ultimele date salvate.",

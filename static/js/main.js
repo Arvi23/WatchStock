@@ -9,4 +9,5 @@ loadIndices();
 loadMarketMovers();
 loadMarketNews();
 initPortfolio();
+initImport();
 loadToday();

@@ -1,0 +1,9 @@
+SEP=	
+simbol	cont	sold	costm	ppiata	ba	valuta	pproc	market	nume	pretref	bid	ask	pasmin	isin	stare	tsim	tcont	nrzec	porbid	pret	eval	comis	profit	evalron	profitron	valutaSauPrc	crest	varcost	tipcash	valcump	investitie	nrzecFractionar	nrzecDynamic	pondere
+US.MSFT	TEST01.US	10	300.123456	414		USD		US	Microsoft Corp					US5949181045		actiuni																		
+US.COHRn	TEST01.US	2	207.265635	192.41		USD		US	Coherent Corp					US19247G1076		actiuni																		
+US.BRK.B	TEST01.US	1	400	450		USD		US	Berkshire Hathaway B					US0846707026		actiuni																		
+TLV	TEST01.US	100	20.5	29.5		RON		RO	Banca Transilvania					ROTLVAACNOR1		actiuni																		
+US.OLDNAME	TEST01.US	5	10	12		USD		US	Renamed Inc					US0000000001		actiuni																		
+US.ZERO	TEST01.US	0	10	12		USD		US	Sold out					US0000000002		actiuni																		
+USD	TEST01.US	43.06		1		USD		RO	USD							bani																		

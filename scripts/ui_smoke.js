@@ -5,6 +5,7 @@
 //
 // Exits non-zero if any check fails or the page throws. All app assets are local, so
 // only external extras (TradingView, logos, favicons) are blocked.
+const path = require('path');
 const { chromium } = require('playwright');
 
 const BASE = process.env.BASE_URL || 'http://127.0.0.1:8001';
@@ -96,6 +97,29 @@ const check = (name, ok, detail = '') => { if (!ok) failures.push(`${name}${deta
   await page.evaluate(() => closeScoreModal());
   await page.waitForTimeout(500);
   check('thesis badge in table', /INTACT/.test(await text('#portfolioTable')));
+
+  // Import a (synthetic) Tradeville export: preview, fix an unknown ticker, merge
+  const SAMPLE_CSV = path.join(__dirname, '..', 'tests', 'fixtures', 'tradeville_sample.csv');
+  await page.click('#btnImport');
+  await page.setInputFiles('#importFile', SAMPLE_CSV);
+  await page.waitForSelector('.imp-table');
+  check('import preview summary', /Tradeville export: 5 positions found/.test(await text('#importPreview')), await text('#importPreview'));
+  check('import skips cash', /USD cash \(43\.06\) is not imported/.test(await text('#importPreview')));
+  check('unknown ticker needs a fix', await page.evaluate(() => document.querySelector('.imp-fix')?.value === 'OLDNAME'));
+  check('import button counts rows', /IMPORT 4 POSITIONS/.test(await text('#btnCommitImport')), await text('#btnCommitImport'));
+  check('replace warns about removals', /will be removed/.test(await text('#importRemoved')), await text('#importRemoved'));
+  await page.fill('.imp-fix', 'newname');
+  await page.click('#importPreview button:has-text("CHECK AGAIN")');
+  await page.waitForFunction(() => /IMPORT 5 POSITIONS/.test(document.getElementById('btnCommitImport').innerText));
+  await shot('import_preview');
+  await page.check('input[name="importMode"][value="merge"]');
+  check('merge removes nothing', (await text('#importRemoved')) === '');
+  await page.click('#btnCommitImport');
+  await page.waitForTimeout(1200);
+  const afterImport = await text('#portfolioTable');
+  check('imported positions shown', /COHR/.test(afterImport) && /BRK-B/.test(afterImport) && /NEWNAME/.test(afterImport), afterImport);
+  check('merge kept other positions', /NVDA/.test(afterImport));
+  check('import modal closed', await page.evaluate(() => document.getElementById('importModal').style.display === 'none'));
 
   // Open a stock: report renders, sanitised
   await page.evaluate(() => quickSearch('Microsoft Corporation', 'MSFT'));
@@ -211,6 +235,13 @@ const check = (name, ok, detail = '') => { if (!ok) failures.push(`${name}${deta
   check('[ro] decimal comma in indices', /6\.012,30/.test(await roText('#indicesBar')), await roText('#indicesBar'));
   check('[ro] today panel in Romanian', /Rezultate financiare în 3 zile/.test(await roText('#todayList')), await roText('#todayList'));
   await leftovers('home');
+  await ro.click('#btnImport');
+  await ro.setInputFiles('#importFile', path.join(__dirname, '..', 'tests', 'fixtures', 'tradeville_sample.csv'));
+  await ro.waitForSelector('.imp-table');
+  check('[ro] import preview', /Export Tradeville: 5 poziții găsite/.test(await roText('#importPreview')), await roText('#importPreview'));
+  await leftovers('import');
+  OUT && await ro.screenshot({ path: `${OUT}/ro_import.png` });
+  await ro.evaluate(() => closeImportModal());
   await ro.evaluate(() => quickSearch('Microsoft Corporation', 'MSFT'));
   await ro.waitForTimeout(2000);
   await ro.click('.tab-btn[data-target="tab-finance"]');

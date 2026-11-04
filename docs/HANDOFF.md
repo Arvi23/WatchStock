@@ -103,15 +103,19 @@ Read this first. Update it at the end of every batch or before your context runs
       leftover English. Caught: a MutationObserver infinite loop on identical translations, and
       the logo turning into "WatchAcțiune"
 
-### Batch 8 — History, Tradeville import, highlights, model presets (next)
-- **Tradeville import** (owner sent a real export 2026-11-04; NOT in the repo, keep it that way;
-  build a synthetic fixture). Format: first line `SEP=\t`, then a tab-separated header. Columns:
-  `simbol` (e.g. `US.APLD`, `US.COHRn`, `US.OUSTc`: strip the `US.` prefix and trailing lowercase
-  class letters; BVB symbols presumably have no prefix → `.RO`), `sold` = shares,
-  `costm` = average cost, `ppiata` = market price, `valuta` = currency, `nume` = name,
-  `isin`, `tsim` = `actiuni` (shares) or `bani` (cash row; skip, maybe show cash). Decimal point
-  is `.`. Use the ISIN (`yf.Search(isin)`) as a fallback when a ticker doesn't resolve. Preview
-  before saving; replace vs merge choice. The owner's dad has ~36 US positions.
+### Batch 8a — Portfolio import  *(branch `batch-8-import`, PR #8, stacked on #7)* ✅
+- [x] IMPORT button next to "+ ADD POSITION" → pick file → preview (nothing saved) → confirm (D16)
+- [x] `watchstock/importers.py`: Tradeville export parser (format notes in its docstring) +
+      generic CSV (ticker/shares/avg_cost, `,` or `;`, decimal comma ok); cash rows skipped
+- [x] Preview checks every ticker with one batch quote call; unknown ones fall back to an ISIN
+      search; still-unknown rows are red and editable ("CHECK AGAIN" re-runs with overrides)
+- [x] Replace (default, the file is the whole portfolio) or merge; notes are kept either way
+- [x] Sector/country/dividend for never-opened stocks: one light `info` call each, in the
+      background, saved in `company_info` (migration 4); resumed on the next portfolio load
+- [x] Tests on a **synthetic** fixture `tests/fixtures/tradeville_sample.csv`. The owner's real
+      export is NOT in the repo; keep it that way. Parsed fine locally: 36 positions + 1 cash row.
+
+### Batch 8b — History, highlights, model presets, lighter Today panel (next)
 - **Today panel with ~36 holdings**: currently fetches calendar + ratings + insider per ticker
   (3 Yahoo requests each, cached 6 h, 4 in parallel): fine but slow on first load. Consider
   calendar-only for the first pass and loading ratings/insider lazily.
@@ -129,10 +133,10 @@ Read this first. Update it at the end of every batch or before your context runs
 - Portfolio history (value over time) — needs a daily snapshot job.
 
 ## Status
-Batches 1-7 done. PR #1 merged by the owner; #2-#7 stacked, CI-green. **Owner action:** on PR #2
+Batches 1-7 and 8a (import) done. PR #1 merged by the owner; #2-#8 stacked, CI-green. **Owner action:** on PR #2
 change the base to `main` (Edit next to the title), merge, click "Delete branch"; GitHub then
 retargets #3 to `main`, and so on. (Agents may not merge or retarget PRs here.)
-The owner's folder `E:\WatchStock\WatchStock` has everything through batch 7. Next: batch 8.
+The owner's folder `E:\WatchStock\WatchStock` has everything through batch 8a. Next: batch 8b.
 
 Notes for the next agent:
 - The sidebar "you own" P/L uses the snapshot price (up to 4 h old); the portfolio table
@@ -188,6 +192,13 @@ Batch 7:
 - [ ] RO button (top right) switches everything to Romanian; EN switches back
 - [ ] A new AI report / thesis check / chat answer comes back in Romanian (free model quality varies)
 - [ ] Romanian wording reads naturally to the dad (send any odd phrases; they're in static/js/i18n.js)
+
+Batch 8a (import):
+- [ ] IMPORT → pick the Tradeville export → preview lists ~36 positions, all "OK" (send the names
+      of any red "Not found" rows: their Tradeville symbol needs a new mapping rule)
+- [ ] After importing: values and P/L match Tradeville (avg cost = Tradeville's `costm`)
+- [ ] Sector doughnut fills in within a minute or two ("Loading sector and dividend info..." line)
+- [ ] The "Your stocks" panel with ~36 holdings: how long does the first load take?
 
 ## Open questions for the owner
 - (answered) Dad holds mostly US stocks → currency formatting stays in batch 3, no rush.
