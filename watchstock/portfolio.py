@@ -11,6 +11,8 @@ each currency group.
 from collections import defaultdict
 from typing import Any
 
+from watchstock.i18n import num, tr
+
 POSITION_LIMIT = 0.20  # one position above 20% of its currency group gets flagged
 SECTOR_LIMIT = 0.40  # one sector above 40% gets flagged
 MIN_POSITIONS_FOR_FLAGS = 3  # with 1-2 positions, "concentrated" is obvious and just noise
@@ -45,8 +47,8 @@ def build_position(holding: dict, quote: dict | None, info: dict | None) -> dict
     return {
         "ticker": holding["ticker"],
         "name": info.get("name") or holding["ticker"],
-        "sector": info.get("sector") or "Unknown",
-        "country": info.get("country") or "Unknown",
+        "sector": info.get("sector") or tr("Unknown"),
+        "country": info.get("country") or tr("Unknown"),
         "currency": currency,
         "shares": shares,
         "avg_cost": avg_cost,
@@ -112,20 +114,20 @@ def build_portfolio(
         if len(priced) >= MIN_POSITIONS_FOR_FLAGS and value > 0:
             for p in priced:
                 if p["value"] / value > POSITION_LIMIT:
-                    flags.append(
-                        f"{p['ticker']} is {p['weight']:.0f}% of your {currency} holdings "
-                        f"(above {POSITION_LIMIT:.0%})."
-                    )
+                    flags.append(tr("{ticker} is {pct} of your {cur} holdings (above {limit}).",
+                                    ticker=p["ticker"], pct=num(p["weight"], 0) + "%", cur=currency,
+                                    limit=f"{POSITION_LIMIT:.0%}"))  # fmt: skip
             for sector, v in sectors.items():
-                if sector != "Unknown" and v / value > SECTOR_LIMIT:
-                    flags.append(
-                        f"{sector} is {v / value:.0%} of your {currency} holdings "
-                        f"(above {SECTOR_LIMIT:.0%})."
-                    )
+                if sector != tr("Unknown") and v / value > SECTOR_LIMIT:
+                    flags.append(tr("{sector} is {pct} of your {cur} holdings (above {limit}).",
+                                    sector=sector, pct=num(v / value * 100, 0) + "%", cur=currency,
+                                    limit=f"{SECTOR_LIMIT:.0%}"))  # fmt: skip
 
     for p in positions:
         if p["value"] is None:
-            flags.append(f"No live price for {p['ticker']}; it's left out of the totals.")
+            flags.append(
+                tr("No live price for {ticker}; it's left out of the totals.", ticker=p["ticker"])
+            )
 
     positions.sort(key=lambda p: (order.index(p["currency"]), -(p["value"] or 0)))
     return {"positions": positions, "totals": totals, "allocation": allocation, "flags": flags}

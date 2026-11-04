@@ -138,7 +138,9 @@ class FakeLLM:
     def complete(self, messages, *, api_key, model, json_mode=True):
         self.requests.append({"messages": messages, "api_key": api_key, "model": model})
         if not api_key:
-            raise openrouter.LLMError("No OpenRouter API key configured. Add one in Settings.")
+            from watchstock.i18n import tr
+
+            raise openrouter.LLMError(tr("No OpenRouter API key configured. Add one in Settings."))
         if self.error:
             raise self.error
         return self.reply

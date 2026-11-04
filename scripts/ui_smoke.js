@@ -182,6 +182,48 @@ const check = (name, ok, detail = '') => { if (!ok) failures.push(`${name}${deta
   await page.waitForTimeout(300);
   await shot('settings');
 
+  // ---- Romanian: switch via cookie, check translations and that no English UI text is left
+  const roCtx = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+  await roCtx.addCookies([{ name: 'ws_lang', value: 'ro', url: BASE }]);
+  const ro = await roCtx.newPage();
+  ro.on('pageerror', e => errors.push('[ro] ' + e.message));
+  await ro.route('**/*', r => (r.request().url().startsWith(BASE) ? r.continue() : r.abort()));
+  const roText = sel => ro.evaluate(s => document.querySelector(s)?.innerText ?? null, sel);
+  // English words that must not survive in Romanian outside content areas (.no-i18n)
+  const EN_WORDS = /\b(Loading|Settings|Refresh|Portfolio|Watchlist|Analyze|Shares|Value|Weight|Today|Liquidity|Stability|Search|History|Market|News|Score|Quality|Valuation|Analyst|Consensus|Fundamentals|Industry|Recommendation|Summary|Dividend|Price|Earnings|Revenue|Margin|Ownership|Insider|position|positions|analysts|upside|ago|days|Click|breakdown|Remove|Edit|Save|Cancel|Average|optional|Company|median|Thesis|owned)\b/;
+  const leftovers = where => ro.evaluate(src => {
+    const re = new RegExp(src), out = new Set();
+    const w = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+    let n;
+    while ((n = w.nextNode())) {
+      const el = n.parentElement;
+      if (!el || el.closest('.no-i18n, script, style') || !el.offsetParent) continue;
+      const v = n.nodeValue.trim();
+      if (v && re.test(v)) out.add(v.slice(0, 80));
+    }
+    return [...out];
+  }, EN_WORDS.source).then(list => list.forEach(x => failures.push(`[ro ${where}] untranslated: ${x}`)));
+  await ro.goto(BASE + '/');
+  await ro.waitForTimeout(2000);
+  check('[ro] analyze button', (await roText('#searchBtn')) === 'Analizează', await roText('#searchBtn'));
+  check('[ro] logo untouched', /^WatchStock$/.test((await roText('#initialView .no-i18n')) + 'Stock'));
+  check('[ro] portfolio title', /PORTOFOLIUL MEU/.test(await roText('#portfolioSection')));
+  check('[ro] decimal comma in indices', /6\.012,30/.test(await roText('#indicesBar')), await roText('#indicesBar'));
+  check('[ro] today panel in Romanian', /Rezultate financiare în 3 zile/.test(await roText('#todayList')), await roText('#todayList'));
+  await leftovers('home');
+  await ro.evaluate(() => quickSearch('Microsoft Corporation', 'MSFT'));
+  await ro.waitForTimeout(2000);
+  await ro.click('.tab-btn[data-target="tab-finance"]');
+  await ro.click('[data-score-key="quality"]');
+  check('[ro] breakdown from backend', /Marjă netă 36,0%/.test(await roText('#popoverContent')), await roText('#popoverContent'));
+  await leftovers('finance');
+  await ro.evaluate(() => { hideScoreBreakdown(); showScoreExplanation('long_term'); });
+  check('[ro] safety modal title', /^Stabilitate: datorii/.test(await roText('#scoreModalTitle')), await roText('#scoreModalTitle'));
+  await ro.evaluate(() => { closeScoreModal(); openSettings(); });
+  await leftovers('settings');
+  OUT && await ro.screenshot({ path: `${OUT}/ro_settings.png` });
+  await roCtx.close();
+
   await browser.close();
   for (const e of errors) failures.push('page error: ' + e);
   if (failures.length) {

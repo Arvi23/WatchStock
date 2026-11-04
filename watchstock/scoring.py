@@ -21,6 +21,8 @@ providers/yahoo.py.
 
 from typing import Any
 
+from watchstock.i18n import num, tr
+
 Breakdown = list[dict[str, Any]]
 
 
@@ -48,7 +50,7 @@ def _combine(components: list[tuple[str, float, float]], extra: Breakdown | None
     breakdown = [_item(label, s, w) for label, s, w in components] + (extra or [])
     total = sum(w for _, _, w in components)
     if total == 0:
-        return {"score": 50, "breakdown": breakdown + [_item("Not enough data: neutral 50")]}
+        return {"score": 50, "breakdown": breakdown + [_item(tr("Not enough data: neutral 50"))]}
     score = sum(s * w for _, s, w in components) / total
     return {"score": _round_score(score), "breakdown": breakdown}
 
@@ -72,7 +74,7 @@ def currency_mismatch(metrics: dict) -> str | None:
     """
     fin, px = metrics.get("financialCurrency"), metrics.get("currency")
     if fin and px and fin != px:
-        return f"statements in {fin}, price in {px}"
+        return tr("statements in {fin}, price in {px}", fin=fin, px=px)
     return None
 
 
@@ -82,23 +84,45 @@ def score_quality(metrics: dict) -> dict:
     extra: Breakdown = []
 
     if (pm := metrics.get("profitMargins")) is not None:
-        comps.append((f"Net margin {pm * 100:.1f}%", _clamp(pm / 0.25 * 100), 0.25))
+        comps.append(
+            (tr("Net margin {pct}", pct=num(pm * 100) + "%"), _clamp(pm / 0.25 * 100), 0.25)
+        )
     if (om := metrics.get("operatingMargins")) is not None:
-        comps.append((f"Operating margin {om * 100:.1f}%", _clamp(om / 0.30 * 100), 0.15))
+        comps.append(
+            (tr("Operating margin {pct}", pct=num(om * 100) + "%"), _clamp(om / 0.30 * 100), 0.15)
+        )
     if (rg := metrics.get("revenueGrowth")) is not None:
         # -20% -> 0, +30% -> 100
-        comps.append((f"Revenue growth {rg * 100:+.1f}%", _clamp((rg + 0.2) / 0.5 * 100), 0.25))
+        comps.append(
+            (
+                tr("Revenue growth {pct}", pct=num(rg * 100, sign=True) + "%"),
+                _clamp((rg + 0.2) / 0.5 * 100),
+                0.25,
+            )
+        )
     if (eg := metrics.get("earningsGrowth")) is not None:
-        comps.append((f"Earnings growth {eg * 100:+.1f}%", _clamp(50 + eg * 150), 0.15))
+        comps.append(
+            (
+                tr("Earnings growth {pct}", pct=num(eg * 100, sign=True) + "%"),
+                _clamp(50 + eg * 150),
+                0.15,
+            )
+        )
 
     fcf, mcap = metrics.get("freeCashflow"), metrics.get("marketCap")
     if fcf is not None and mcap:
         if note := currency_mismatch(metrics):
-            extra.append(_item("Free-cash-flow yield skipped", note=note))
+            extra.append(_item(tr("Free-cash-flow yield skipped"), note=note))
         else:
             fcf_yield = fcf / mcap
             # 0% -> 50, +5% -> 100, -5% -> 0
-            comps.append((f"FCF yield {fcf_yield * 100:.1f}%", _clamp(50 + fcf_yield * 1000), 0.20))
+            comps.append(
+                (
+                    tr("FCF yield {pct}", pct=num(fcf_yield * 100) + "%"),
+                    _clamp(50 + fcf_yield * 1000),
+                    0.20,
+                )
+            )
     return _combine(comps, extra)
 
 
@@ -114,9 +138,19 @@ def _pe_component(label: str, pe: float, median: float | None, abs_bands, abs_el
     """P/E vs industry peers when a median exists, else fixed bands for all industries."""
     if median:
         ratio = pe / median
-        return (f"{label} {pe:.1f} vs industry median {median:.1f} ({(ratio - 1) * 100:+.0f}%)",
-                _bucket(ratio, _RELATIVE_PE_BANDS, 15), weight)  # fmt: skip
-    return (f"{label} {pe:.1f}", _bucket(pe, abs_bands, abs_else), weight)
+        text = tr(
+            "{label} {pe} vs industry median {median} ({diff})",
+            label=tr(label),
+            pe=num(pe),
+            median=num(median),
+            diff=num((ratio - 1) * 100, 0, sign=True) + "%",
+        )
+        return (text, _bucket(ratio, _RELATIVE_PE_BANDS, 15), weight)
+    return (
+        tr("{label} {pe}", label=tr(label), pe=num(pe)),
+        _bucket(pe, abs_bands, abs_else),
+        weight,
+    )
 
 
 def score_valuation(metrics: dict, peer_medians: dict | None = None) -> dict:
@@ -137,7 +171,7 @@ def score_valuation(metrics: dict, peer_medians: dict | None = None) -> dict:
             _pe_component("Trailing P/E", pe, peer_medians.get("trailingPE"), bands, 12, 0.25)
         )
     elif eps is not None and eps <= 0:
-        comps.append(("Trailing P/E: losses over last 12 months", 10, 0.25))
+        comps.append((tr("Trailing P/E: losses over last 12 months"), 10, 0.25))
 
     fpe, feps = metrics.get("forwardPE"), metrics.get("forwardEps")
     if fpe is not None and 0 < fpe < 500:
@@ -146,17 +180,21 @@ def score_valuation(metrics: dict, peer_medians: dict | None = None) -> dict:
             _pe_component("Forward P/E", fpe, peer_medians.get("forwardPE"), bands, 18, 0.20)
         )
     elif feps is not None and feps <= 0:
-        comps.append(("Forward P/E: losses expected", 10, 0.20))
+        comps.append((tr("Forward P/E: losses expected"), 10, 0.20))
 
     peg = metrics.get("pegRatio")
     if peg is not None and 0 < peg < 20:
         bands = [(0.5, 95), (1.0, 82), (1.5, 65), (2.0, 50), (3.0, 32)]
-        comps.append((f"PEG {peg:.2f}", _bucket(peg, bands, 15), 0.25))
+        comps.append((tr("PEG {v}", v=num(peg, 2)), _bucket(peg, bands, 15), 0.25))
 
     pb = metrics.get("priceToBook")
     if pb is not None and pb > 0:
         comps.append(
-            (f"Price/Book {pb:.2f}", _bucket(pb, [(1, 88), (2, 72), (3, 58), (5, 42)], 22), 0.15)
+            (
+                tr("Price/Book {v}", v=num(pb, 2)),
+                _bucket(pb, [(1, 88), (2, 72), (3, 58), (5, 42)], 22),
+                0.15,
+            )
         )
 
     high, low, cur = (
@@ -166,7 +204,7 @@ def score_valuation(metrics: dict, peer_medians: dict | None = None) -> dict:
         pos_pct = round((cur - low) / (high - low) * 100, 1)
         bands = [(20, 85), (40, 72), (60, 55), (80, 38)]
         comps.append(
-            (f"52-week position {pos_pct:.0f}% (contrarian: lower = cheaper)",
+            (tr("52-week position {pct} (contrarian: lower = cheaper)", pct=num(pos_pct, 0) + "%"),
              _bucket(pos_pct, bands, 20), 0.15)
         )  # fmt: skip
 
@@ -191,7 +229,7 @@ def score_analyst(metrics: dict, analyst_data: dict) -> dict:
     if rec is None:
         return {
             "score": 50,
-            "breakdown": [_item("No analyst coverage: neutral 50")],
+            "breakdown": [_item(tr("No analyst coverage: neutral 50"))],
             "upside_pct": None,
         }
 
@@ -200,9 +238,18 @@ def score_analyst(metrics: dict, analyst_data: dict) -> dict:
     score = 50 + (raw - 50) * confidence
     consensus = (analyst_data.get("recommendationKey") or "n/a").replace("_", " ").title()
     breakdown = [
-        _item(f"Consensus: {consensus} ({rec:.1f} on a 1-5 scale)", raw),
-        _item(f"{n} analyst{'s' if n != 1 else ''}: {confidence * 100:.0f}% trust in consensus",
-              note="few analysts pull the score toward 50"),
+        _item(tr("Consensus: {consensus} ({rec} on a 1-5 scale)", consensus=tr(consensus),
+                 rec=num(rec)), raw),
+        _item(
+            tr(
+                "{n} analyst: {conf} trust in consensus"
+                if n == 1
+                else "{n} analysts: {conf} trust in consensus",
+                n=n,
+                conf=f"{confidence * 100:.0f}%",
+            ),
+            note=tr("few analysts pull the score toward 50"),
+        ),
     ]  # fmt: skip
 
     upside = None
@@ -210,7 +257,12 @@ def score_analyst(metrics: dict, analyst_data: dict) -> dict:
         upside = round((target - cur) / cur * 100, 1)
         delta = 10 if upside > 30 else 5 if upside > 10 else -10 if upside < 0 else 0
         score += delta
-        breakdown.append(_item(f"Price-target upside {upside:+.1f}%", note=f"{delta:+d} points"))
+        breakdown.append(
+            _item(
+                tr("Price-target upside {pct}", pct=num(upside, sign=True) + "%"),
+                note=tr("{delta} points", delta=f"{delta:+d}"),
+            )
+        )
     return {"score": _round_score(_clamp(score)), "breakdown": breakdown, "upside_pct": upside}
 
 
@@ -224,29 +276,33 @@ def score_smart_money(metrics: dict) -> dict:
 
     if (ins := metrics.get("heldPercentInsiders")) is not None:
         bands = [(0.01, 30), (0.05, 44), (0.10, 58), (0.20, 72)]
-        comps.append((f"Insider ownership {ins * 100:.1f}%", _bucket(ins, bands, 85), 0.35))
+        comps.append(
+            (tr("Insider ownership {pct}", pct=num(ins * 100) + "%"), _bucket(ins, bands, 85), 0.35)
+        )
 
     if (inst := metrics.get("heldPercentInstitutions")) is not None:
         if inst > 0.90:
             s = 40
-            flags.append("Heavily institutionally owned: crowded-trade risk")
+            flags.append(tr("Heavily institutionally owned: crowded-trade risk"))
         else:
             s = _bucket(inst, [(0.20, 52), (0.50, 60), (0.80, 72)], 55)
-        comps.append((f"Institutional ownership {inst * 100:.1f}%", s, 0.30))
+        comps.append((tr("Institutional ownership {pct}", pct=num(inst * 100) + "%"), s, 0.30))
 
     if (short := metrics.get("shortPercentOfFloat")) is not None:
         if short > 0.20:
             s = 22
             flags.append(
-                f"Very high short interest ({short * 100:.1f}%): "
-                "strong bearish bets or squeeze risk"
+                tr(
+                    "Very high short interest ({pct}): strong bearish bets or squeeze risk",
+                    pct=num(short * 100) + "%",
+                )
             )
         elif short > 0.10:
             s = 35
-            flags.append(f"High short interest ({short * 100:.1f}%)")
+            flags.append(tr("High short interest ({pct})", pct=num(short * 100) + "%"))
         else:
             s = _bucket(short, [(0.02, 72), (0.05, 62)], 52)
-        comps.append((f"Short interest {short * 100:.1f}% of float", s, 0.35))
+        comps.append((tr("Short interest {pct} of float", pct=num(short * 100) + "%"), s, 0.35))
 
     result = _combine(comps)
     result["flags"] = flags
@@ -276,13 +332,13 @@ def calculate_opportunity_score(pillars: dict[str, dict]) -> dict:
     components = [
         {
             "key": k,
-            "label": PILLAR_LABELS[k],
+            "label": tr(PILLAR_LABELS[k]),
             "score": pillars[k]["score"],
             "weight": f"{w * 100:.0f}%",
         }
         for k, w in OPPORTUNITY_WEIGHTS.items()
     ]
-    return {"score": score, "label": label, "color": color, "components": components}
+    return {"score": score, "label": tr(label), "color": color, "components": components}
 
 
 # ---------------------------------------------------------------------- safety
@@ -304,11 +360,11 @@ def calculate_safety(metrics: dict) -> dict:
     st: list[tuple[str, float, float]] = []
     st_extra: Breakdown = []
     if (cr := metrics.get("currentRatio")) is not None:
-        st.append((f"Current ratio {cr:.2f}", _clamp(cr / 2.0 * 100), 0.55))
+        st.append((tr("Current ratio {v}", v=num(cr, 2)), _clamp(cr / 2.0 * 100), 0.55))
     if (qr := metrics.get("quickRatio")) is not None:
-        st.append((f"Quick ratio {qr:.2f}", _clamp(qr / 1.5 * 100), 0.45))
+        st.append((tr("Quick ratio {v}", v=num(qr, 2)), _clamp(qr / 1.5 * 100), 0.45))
     if financial and not st:
-        st_extra.append(_item("Liquidity ratios aren't reported for banks/insurers"))
+        st_extra.append(_item(tr("Liquidity ratios aren't reported for banks/insurers")))
 
     lt: list[tuple[str, float, float]] = []
     lt_extra: Breakdown = []
@@ -316,26 +372,40 @@ def calculate_safety(metrics: dict) -> dict:
     de = metrics.get("debtToEquity")
     if de is not None and not financial:
         # Yahoo: percent. 0% -> 100, 200% (2x) -> 0
-        lt.append((f"Debt/Equity {de / 100:.2f}x (debt load)", _clamp(100 - de / 2.0), 0.5))
+        lt.append(
+            (tr("Debt/Equity {v}x (debt load)", v=num(de / 100, 2)), _clamp(100 - de / 2.0), 0.5)
+        )
     elif de is not None:
-        lt_extra.append(_item("Debt/Equity skipped", note="not meaningful for financial companies"))
+        lt_extra.append(
+            _item(tr("Debt/Equity skipped"), note=tr("not meaningful for financial companies"))
+        )
     if (beta := metrics.get("beta")) is not None:
         # beta 0.5 -> 100, 1.5 -> 50, 2.5 -> 0
         lt.append(
-            (f"Beta {beta:.2f} (volatility vs the market)", _clamp(100 - (beta - 0.5) * 50), 0.5)
+            (
+                tr("Beta {v} (volatility vs the market)", v=num(beta, 2)),
+                _clamp(100 - (beta - 0.5) * 50),
+                0.5,
+            )
         )
     # One blended number can hide which half is the problem (e.g. no debt but very
     # volatile reads as a mediocre "stability"), so say it outright.
     if len(lt) == 2 and abs(lt[0][1] - lt[1][1]) >= 40:
-        weak = "volatility" if lt[1][1] < lt[0][1] else "debt"
-        strong = "debt" if weak == "volatility" else "volatility"
-        lt_extra.append(_item(f"Held down by {weak}; {strong} looks healthy"))
+        volatility_is_weaker = lt[1][1] < lt[0][1]
+        text = (
+            "Held down by volatility; debt looks healthy"
+            if volatility_is_weaker
+            else "Held down by debt; volatility looks healthy"
+        )
+        lt_extra.append(_item(tr(text)))
 
     country = metrics.get("country")
     if country in _GEO_FLAGS:
-        flag = f"Headquartered in {country} ({_GEO_FLAGS[country]})"
+        flag = tr(
+            "Headquartered in {country} ({kind})", country=country, kind=tr(_GEO_FLAGS[country])
+        )
         flags.append(flag)
-        lt_extra.append(_item(flag, note="informational, not scored"))
+        lt_extra.append(_item(flag, note=tr("informational, not scored")))
 
     return {
         "short_term": _combine(st, st_extra),

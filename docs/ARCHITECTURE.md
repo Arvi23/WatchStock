@@ -13,6 +13,7 @@ watchstock/app.py            FastAPI app factory, error → 502 mapping, static 
         │
         ├── services.py      snapshot freshness: cache hit / live fetch / stale fallback
         ├── scoring.py       pure scoring functions → opportunity pillars + safety, with breakdowns
+        ├── i18n.py          English/Romanian: tr(), num(), request language (cookie → ContextVar)
         ├── symbols.py       Yahoo ↔ TradingView ticker translation
         ├── portfolio.py     pure portfolio math: value, P/L, weights, allocation, flags, dividends
         ├── today.py         pure "Today" event builder (earnings, ex-div, moves, ratings, insider buys)
@@ -34,6 +35,7 @@ watchstock/app.py            FastAPI app factory, error → 502 mapping, static 
 | `css/tailwind.css` | precompiled Tailwind (generated from `tailwind.config.js`; `npm run build:css`) |
 | `css/app.css` | fonts, theme variables, component styles, markdown (`.prose`) styles |
 | `vendor/` | pinned Chart.js, marked, DOMPurify, Inter font (`npm run vendor`) |
+| `js/i18n.js` | language (cookie `ws_lang`), Romanian dictionary, `t()`, `fmtN()`, auto-translation |
 | `js/core.js` | `api()`, `esc()`, `renderMarkdown()`, money formatting, DOM handles, toast |
 | `js/charts.js` | Chart.js helpers |
 | `js/scores.js` | breakdown popover + safety modal |
@@ -60,7 +62,8 @@ UI against `scripts/fake_server.py` in CI.
    - Profile failure with no saved snapshot → `MarketDataError` → HTTP 502 with a message.
    - Profile failure with an old snapshot → old one returned with `stale: true` + warning.
    - News failure → empty news + warning; the rest still works.
-4. The latest stored AI report (if any) is attached as `ai_analysis`.
+4. Scores are computed from the snapshot at serve time (`services.with_scores`) in the request's
+   language, and the latest stored AI report (if any) is attached as `ai_analysis`.
 5. If there is none, the UI immediately calls `POST /api/stocks/MSFT/analysis`, which
    runs the LLM on the snapshot and stores the report only if it parsed correctly.
 

@@ -7,6 +7,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
 from watchstock import analysis, portfolio, services, store
+from watchstock.i18n import tr
 from watchstock.providers import yahoo
 
 router = APIRouter(prefix="/api/portfolio", tags=["portfolio"])
@@ -60,9 +61,9 @@ async def run_thesis_check(ticker: str) -> dict[str, Any]:
     ticker = services.normalize_ticker(ticker)
     holding = store.get_holding(ticker)
     if not holding:
-        raise HTTPException(404, f"{ticker} isn't in the portfolio.")
+        raise HTTPException(404, tr("{ticker} isn't in the portfolio.", ticker=ticker))
     if not holding["notes"].strip():
-        raise HTTPException(422, "Add a 'why I own it' note to this position first (Edit).")
+        raise HTTPException(422, tr("Add a 'why I own it' note to this position first (Edit)."))
     stock = await asyncio.to_thread(services.get_stock, ticker)
     return await asyncio.to_thread(analysis.run_thesis_check, stock, holding["notes"])
 

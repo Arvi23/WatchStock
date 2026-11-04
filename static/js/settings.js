@@ -36,7 +36,7 @@ async function saveSettings() {
         await refreshLlmStatus();
         closeSettings();
         showToast('Settings saved.');
-    } catch(e) { showToast('Could not save settings: ' + e.message); }
+    } catch(e) { showToast(t('Could not save settings: {msg}', { msg: e.message })); }
 }
 
 document.getElementById('settingsModal').addEventListener('click', function(e) {

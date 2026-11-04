@@ -17,7 +17,7 @@ async function loadToday(manual = false) {
     try {
         renderToday(await api('/api/today'));
     } catch (e) {
-        list.innerHTML = `<div style="font-size:0.68rem; color:#ff6b6b;">Couldn't load: ${esc(e.message)}</div>`;
+        list.innerHTML = `<div style="font-size:0.68rem; color:#ff6b6b;">${esc(t("Couldn't load: {msg}", { msg: e.message }))}</div>`;
     }
 }
 
@@ -43,5 +43,5 @@ function renderToday(data) {
                 <div style="font-size:0.68rem; color:#ccc; line-height:1.4;">${esc(e.text)}</div>
             </div>
         </div>`;
-    }).join('') + (data.events.length > 12 ? `<div style="font-size:0.6rem; color:#555; padding-top:6px;">+${data.events.length - 12} more</div>` : '');
+    }).join('') + (data.events.length > 12 ? `<div style="font-size:0.6rem; color:#555; padding-top:6px;">${t('+{n} more', { n: data.events.length - 12 })}</div>` : '');
 }

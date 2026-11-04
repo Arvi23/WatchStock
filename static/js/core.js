@@ -97,10 +97,10 @@ function fmtMoney(value, currency = 'USD', digits = 2) {
     if (value == null || isNaN(value)) return 'N/A';
     const minor = MINOR_UNITS[currency];
     if (minor) {
-        return Number(value).toLocaleString('en-US', { minimumFractionDigits: digits, maximumFractionDigits: digits }) + ' ' + minor[1];
+        return Number(value).toLocaleString(LOCALE, { minimumFractionDigits: digits, maximumFractionDigits: digits }) + ' ' + minor[1];
     }
     try {
-        return new Intl.NumberFormat('en-US', {
+        return new Intl.NumberFormat(LOCALE, {
             style: 'currency', currency, minimumFractionDigits: digits, maximumFractionDigits: digits,
         }).format(value);
     } catch (e) {
@@ -114,7 +114,7 @@ function fmtBig(value, currency = 'USD') {
     if (value == null || isNaN(value)) return 'N/A';
     const major = MINOR_UNITS[currency]?.[0] || currency;
     try {
-        return new Intl.NumberFormat('en-US', {
+        return new Intl.NumberFormat(LOCALE, {
             style: 'currency', currency: major, notation: 'compact', maximumFractionDigits: 2,
         }).format(value);
     } catch (e) {
@@ -126,10 +126,11 @@ function timeAgo(iso) {
     if (!iso) return '';
     const secs = (Date.now() - new Date(iso).getTime()) / 1000;
     if (isNaN(secs)) return '';
-    if (secs < 60) return 'just now';
-    if (secs < 3600) return `${Math.floor(secs / 60)}m ago`;
-    if (secs < 86400) return `${Math.floor(secs / 3600)}h ago`;
-    return `${Math.floor(secs / 86400)}d ago`;
+    if (secs < 60) return t('just now');
+    if (secs < 3600) return t('{n}m ago', { n: Math.floor(secs / 60) });
+    if (secs < 86400) return t('{n}h ago', { n: Math.floor(secs / 3600) });
+    const days = Math.floor(secs / 86400);
+    return days === 1 ? t('1 day ago') : t('{n}d ago', { n: days });
 }
 
 

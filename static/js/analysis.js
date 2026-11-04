@@ -15,10 +15,10 @@ const VERDICT_COLORS = {
 function renderAiAnalysis(aiData) {
     if (!aiData) return;
 
-    aiSummary.innerText = aiData.executive_summary || "No summary provided.";
+    aiSummary.innerText = aiData.executive_summary || t("No summary provided.");
     const modelLabel = document.getElementById('aiModelLabel');
     if (modelLabel && aiData.model) {
-        modelLabel.textContent = `Analysed by ${aiData.model}` + (aiData.created_at ? ` · ${new Date(aiData.created_at).toLocaleString()}` : '');
+        modelLabel.textContent = t('Analysed by {model}', { model: aiData.model }) + (aiData.created_at ? ` · ${fmtDateTime(aiData.created_at)}` : '');
     }
 
     // Verdict badge
@@ -162,7 +162,7 @@ async function requestAnalysis() {
     } catch (err) {
         if (currentRawData?.ticker === ticker) {
             aiLoading.classList.add('hidden');
-            aiSummary.innerText = 'Analysis failed: ' + err.message;
+            aiSummary.innerText = t('Analysis failed: {msg}', { msg: err.message });
             aiAction.innerText = '';
             aiAnalysisResult.classList.remove('hidden');
         }

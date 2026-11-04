@@ -5,6 +5,7 @@ from typing import Any
 import httpx
 
 from watchstock import config
+from watchstock.i18n import tr
 
 URL = "https://openrouter.ai/api/v1/chat/completions"
 
@@ -18,7 +19,7 @@ def complete(
 ) -> str:
     """Send a chat completion and return the assistant's text."""
     if not api_key:
-        raise LLMError("No OpenRouter API key configured. Add one in Settings.")
+        raise LLMError(tr("No OpenRouter API key configured. Add one in Settings."))
     payload: dict[str, Any] = {"model": model, "messages": messages}
     # response_format is an OpenAI-style option; Anthropic models misbehave with it.
     if json_mode and not model.startswith("anthropic/"):

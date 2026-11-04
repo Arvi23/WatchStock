@@ -1,6 +1,6 @@
 [project]
 name = "watchstock"
-version = "0.7.0"
+version = "0.8.0"
 description = "Personal stock analysis terminal: Yahoo Finance data, explainable scores, optional LLM analysis."
 readme = "README.md"
 requires-python = ">=3.12"
@@ -40,3 +40,4 @@ select = ["E", "F", "W", "I", "B", "UP", "SIM"]
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["E501"]  # long literal test data reads better on one line
 "scripts/fake_server.py" = ["E501"]
+"watchstock/i18n.py" = ["E501"]  # translation table

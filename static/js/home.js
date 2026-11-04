@@ -11,11 +11,11 @@ async function loadIndices() {
             const pos   = idx.change_pct >= 0;
             const color = pos ? '#4caf50' : '#f44336';
             const arrow = pos ? '▲ ' : '▼ ';
-            const val   = idx.value >= 1000 ? idx.value.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2}) : idx.value.toFixed(2);
+            const val   = fmtN(idx.value, 2);
             return `<div style="display:flex; align-items:center; gap:7px; padding:4px 10px; background:#252526; border:1px solid #333; white-space:nowrap;">
                 <span style="font-size:0.62rem; color:#a0a0a0; letter-spacing:1px;">${idx.name}</span>
                 <span style="font-size:0.72rem; font-weight:600; color:#e0e0e0; font-family:monospace;">${val}</span>
-                <span style="font-size:0.65rem; font-weight:700; color:${color}; font-family:monospace;">${arrow}${idx.change_pct >= 0 ? '+' : ''}${idx.change_pct}%</span>
+                <span style="font-size:0.65rem; font-weight:700; color:${color}; font-family:monospace;">${arrow}${idx.change_pct >= 0 ? '+' : ''}${fmtN(idx.change_pct, 2)}%</span>
             </div>`;
         }).join('');
     } catch(e) {
@@ -89,7 +89,7 @@ function renderMoversList(items, containerId, positive) {
                     <span style="font-size:0.72rem; font-weight:700; color:#e0e0e0; font-family:monospace;">${item.ticker}</span>
                     <span style="font-size:0.6rem; color:#999; margin-left:6px;">${item.name}</span>
                 </div>
-                <span style="font-size:0.75rem; font-weight:700; color:${color}; white-space:nowrap; margin-left:8px; font-family:monospace;">${item.change_pct >= 0 ? '+' : ''}${item.change_pct}%</span>
+                <span style="font-size:0.75rem; font-weight:700; color:${color}; white-space:nowrap; margin-left:8px; font-family:monospace;">${item.change_pct >= 0 ? '+' : ''}${fmtN(item.change_pct, 2)}%</span>
             </div>`).join('')
         : `<div style="font-size:0.68rem; color:#444; padding:8px 4px;">No ${positive ? 'gainers' : 'losers'} match this filter.</div>`;
 }
@@ -134,7 +134,7 @@ function renderWatchlist() {
     panel.innerHTML = _watchlistData.map(item => {
         const pos   = (item.change_pct ?? 0) >= 0;
         const color = pos ? '#4caf50' : '#f44336';
-        const chg   = item.change_pct != null ? `${pos ? '+' : ''}${item.change_pct}%` : '--';
+        const chg   = item.change_pct != null ? `${pos ? '+' : ''}${fmtN(item.change_pct, 2)}%` : '--';
         const price = item.price != null ? fmtMoney(item.price, item.currency || 'USD') : '--';
         const name  = (item.company_name || '').replace(/'/g, "\\'");
         return `<div onclick="quickSearch('${name}','${item.ticker}')"

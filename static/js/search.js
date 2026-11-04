@@ -109,7 +109,7 @@ async function executeSearch(company, ticker) {
     try {
         if (!ticker) {
             const matches = await api(`/api/search?q=${encodeURIComponent(company)}`);
-            if (!matches.length) throw new Error(`No stock found for "${company}".`);
+            if (!matches.length) throw new Error(t('No stock found for "{q}".', { q: company }));
             ticker = matches[0].ticker;
             company = matches[0].name;
         }
@@ -158,7 +158,7 @@ async function refreshLlmStatus() {
 
 function showNoKeyHint() {
     document.getElementById('aiLoading').classList.add('hidden');
-    aiSummary.innerText = 'AI analysis is off. Add an OpenRouter API key in Settings (gear icon), then press "New AI report".';
+    aiSummary.innerText = t('AI analysis is off. Add an OpenRouter API key in Settings (gear icon), then press "New AI report".');
     aiAction.innerText = '';
     aiAnalysisResult.classList.remove('hidden');
 }
@@ -166,16 +166,16 @@ function showNoKeyHint() {
 function updateAsOf(data) {
     const el = document.getElementById('asOfLabel');
     if (!el) return;
-    el.textContent = data.as_of ? `data ${timeAgo(data.as_of)}${data.stale ? ' · offline' : ''}` : '';
+    el.textContent = data.as_of ? t('data {age}', { age: timeAgo(data.as_of) }) + (data.stale ? ' · ' + t('offline') : '') : '';
     el.style.color = data.stale ? '#ff9800' : '#666';
-    el.title = data.as_of ? 'Fetched ' + new Date(data.as_of).toLocaleString() : '';
+    el.title = data.as_of ? t('Fetched {when}', { when: fmtDateTime(data.as_of) }) : '';
 }
 
 searchBtn.addEventListener('click', () => {
     const company = companyInput.value.trim();
     const ticker = tickerInput.value.trim();
     if (!company) {
-        alert("Please enter a company name.");
+        alert(t("Please enter a company name."));
         companyInput.focus();
         return;
     }

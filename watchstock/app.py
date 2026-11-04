@@ -8,7 +8,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-from watchstock import __version__, config, db
+from watchstock import __version__, config, db, i18n
 from watchstock.providers.openrouter import LLMError
 from watchstock.providers.yahoo import MarketDataError
 from watchstock.routes import market, personal, portfolio, stocks, today
@@ -25,6 +25,15 @@ async def lifespan(_app: FastAPI):
 
 def create_app() -> FastAPI:
     app = FastAPI(title="WatchStock", version=__version__, lifespan=lifespan)
+
+    # UI language (EN/RO switch) -> request-scoped language for backend text and the LLM.
+    @app.middleware("http")
+    async def _language(request: Request, call_next):
+        token = i18n.set_lang(request.cookies.get("ws_lang"))
+        try:
+            return await call_next(request)
+        finally:
+            i18n.reset_lang(token)
 
     # Upstream failures become a clear 502 with a message the UI can show.
     @app.exception_handler(MarketDataError)

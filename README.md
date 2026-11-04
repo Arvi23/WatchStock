@@ -46,6 +46,7 @@ Download the new ZIP and copy your old `data` folder into it (or `git pull`).
   Reports are saved with their date and model.
 - **News tab:** recent headlines for the stock.
 - **Chat:** ask follow-up questions about the loaded company.
+- **English / Română:** switch with EN/RO at the top right. The AI writes in the chosen language too.
 
 Data is cached for a few hours; the **REFRESH** button next to the ticker fetches it
 again, and the label beside it shows how old the data is.
