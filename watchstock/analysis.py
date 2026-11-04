@@ -50,6 +50,11 @@ def compact_context(stock: dict[str, Any]) -> dict[str, Any]:
         "key_officers": (stock.get("financial_data", {}).get("key_officers") or [])[:3],
         "risk_analysis": stock.get("risk_analysis", {}),
         "safety": stock.get("safety"),
+        "industry_peers": (
+            {k: stock["peers"][k] for k in ("industry", "medians", "relative", "peer_count")}
+            if stock.get("peers")
+            else None
+        ),
         "scores": stock.get("scores"),
         "news": [
             {k: n.get(k) for k in ("title", "publisher", "published_at", "summary")}
@@ -70,6 +75,7 @@ ANALYSIS_SYSTEM_PROMPT = (
     "- `scores`: opportunity (0-100) built from quality, valuation, analyst and smart-money "
     "pillars, each with a breakdown of what drove it\n"
     "- `safety`: short_term (liquidity) and long_term (solvency & volatility) 0-100, plus flags\n"
+    "- `industry_peers` (may be null): industry peer medians and this stock's % difference\n"
     "- `previous_report` (may be absent): your last report on this stock and its date\n"
     "- `news`: recent headlines. Decide yourself which ones are material.\n\n"
     "INSTRUCTIONS:\n"

@@ -94,6 +94,22 @@ class FakeYahoo:
         return self._market("movers", {"gainers": [], "losers": []})
 
     events: dict = {}
+    # industry key -> list of peers; peer ticker -> key metrics. Empty = no peers.
+    industries: dict = {}
+    peer_metrics: dict = {}
+    peers_error: Exception | None = None
+
+    def fetch_industry_peers(self, industry_key, limit=8):
+        self.calls.append(("industry", industry_key))
+        if self.peers_error:
+            raise self.peers_error
+        return copy.deepcopy(self.industries.get(industry_key, []))[:limit]
+
+    def fetch_key_metrics(self, ticker):
+        self.calls.append(("peer", ticker))
+        if ticker not in self.peer_metrics:
+            raise yahoo.MarketDataError(f"No data found for ticker {ticker!r}")
+        return copy.deepcopy(self.peer_metrics[ticker])
 
     def fetch_events(self, ticker):
         self.calls.append(("events", ticker))
@@ -141,7 +157,8 @@ def _isolated(tmp_path, monkeypatch):
 def fake_yahoo(monkeypatch):
     fake = FakeYahoo()
     for name in ("fetch_profile", "fetch_news", "fetch_quotes", "fetch_indices",
-                 "fetch_market_news", "fetch_movers", "search", "fetch_events"):  # fmt: skip
+                 "fetch_market_news", "fetch_movers", "search", "fetch_events",
+                 "fetch_industry_peers", "fetch_key_metrics"):  # fmt: skip
         monkeypatch.setattr(yahoo, name, getattr(fake, name))
     return fake
 

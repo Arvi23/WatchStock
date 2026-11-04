@@ -77,3 +77,24 @@ def test_dividend_yield_is_a_fraction(monkeypatch):
     info = {"longName": "X", "currentPrice": 400.0, "dividendYield": 0.88}
     monkeypatch.setattr(yahoo.yf, "Ticker", lambda t: _StubTicker(info))
     assert yahoo.fetch_profile("X")["metrics"]["dividendYield"] == pytest.approx(0.0088)
+
+
+def test_fetch_industry_peers_and_key_metrics(monkeypatch):
+    import pandas as pd
+
+    class StubIndustry:
+        def __init__(self, key):
+            self.top_companies = pd.DataFrame(
+                [("MSFT", "Microsoft", "Buy", 0.4), ("ORCL", "Oracle", "Buy", 0.1)],
+                columns=["symbol", "name", "rating", "market weight"],
+            ).set_index("symbol")
+
+    monkeypatch.setattr(yahoo.yf, "Industry", StubIndustry)
+    assert yahoo.fetch_industry_peers("software-infrastructure", limit=1) == [
+        {"ticker": "MSFT", "name": "Microsoft"}
+    ]
+
+    info = {"shortName": "Oracle", "trailingPE": 40.0, "forwardPE": float("nan"), "currency": "USD"}
+    monkeypatch.setattr(yahoo.yf, "Ticker", lambda t: _StubTicker(info))
+    m = yahoo.fetch_key_metrics("ORCL")
+    assert m["name"] == "Oracle" and m["trailingPE"] == 40.0 and m["forwardPE"] is None

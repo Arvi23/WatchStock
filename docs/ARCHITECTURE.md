@@ -16,12 +16,13 @@ watchstock/app.py            FastAPI app factory, error → 502 mapping, static 
         ├── symbols.py       Yahoo ↔ TradingView ticker translation
         ├── portfolio.py     pure portfolio math: value, P/L, weights, allocation, flags, dividends
         ├── today.py         pure "Today" event builder (earnings, ex-div, moves, ratings, insider buys)
+        ├── peers.py         pure industry-peer comparison (medians, relative %, table rows)
         ├── analysis.py      LLM prompts: report, chat, thesis check (compact context)
         ├── store.py         every SQL query
         ├── db.py            connection + migrations (PRAGMA user_version)
         ├── ttl_cache.py     in-memory TTL cache for widgets
         └── providers/       the only code that touches the network
-             ├── yahoo.py       yfinance: profile, news, quotes, events (calendar), search, screeners
+             ├── yahoo.py       yfinance: profile, news, quotes, events, industry peers, search, screeners
              └── openrouter.py  chat completions
 ```
 
@@ -79,7 +80,8 @@ call never blocks other requests.
     "upgrades_downgrades": [...], "insider_transactions": [...]
   },
   "news": [{"title", "url", "publisher", "published_at", "summary"}],
-  "schema": 2,                       // services.SNAPSHOT_SCHEMA
+  "schema": 3,                       // services.SNAPSHOT_SCHEMA
+  "peers": null | {"industry", "rows": [{"ticker","name","is_self", P/E...}], "medians", "relative", "peer_count"},
   "tradingview_symbol": "MSFT",      // e.g. "BVB:TLV" for TLV.RO
   "scores": {
     "quality" | "valuation" | "analyst" | "smart_money": {"score", "breakdown": [item]},

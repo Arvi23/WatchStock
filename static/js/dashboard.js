@@ -14,7 +14,7 @@ const METRIC_DESCRIPTIONS = {
     earningsGrowth:   { label: 'Earnings Growth',    desc: 'Year-over-year earnings change.', format: fmtPct },
     trailingEps:      { label: 'EPS (Trailing)',     desc: 'Earnings per share over the last 12 months.', format: v => fmtMoney(v, priceCurrency()) },
     forwardEps:       { label: 'EPS (Forward)',      desc: 'Analyst-estimated earnings per share for next 12 months.', format: v => fmtMoney(v, priceCurrency()) },
-    debtToEquity:     { label: 'Debt / Equity',      desc: 'Total debt relative to shareholders equity. Lower = less leverage risk.', format: fmtNum(2) },
+    debtToEquity:     { label: 'Debt / Equity',      desc: 'Total debt relative to shareholders equity. Lower = less leverage risk.', format: v => v != null ? (v / 100).toFixed(2) + 'x' : 'N/A' },  // Yahoo sends percent
     freeCashflow:     { label: 'Free Cash Flow',     desc: 'Cash generated after capex. Positive = company funds itself without borrowing.', format: v => fmtBig(v, statementCurrency()) },
     dividendYield:    { label: 'Dividend Yield',     desc: 'Annual dividend as % of current price.',
                         format: v => v != null ? (v * 100).toFixed(2) + '%' : 'N/A' },  // backend sends a fraction
@@ -412,6 +412,7 @@ function populateDashboard(data) {
     renderValuationSection(metrics, data.scores?.valuation);
     renderAnalystSection(data.financial_data?.analyst_data, data.scores?.analyst, data.financial_data?.upgrades_downgrades);
     renderSmartMoneySection(metrics, data.scores?.smart_money, data.financial_data?.insider_transactions);
+    renderPeersSection(data.peers);
 
     // ---- Fundamentals metric cards ----
     const metricCards = document.getElementById('metricCards');
@@ -492,4 +493,42 @@ function populateDashboard(data) {
         `;
         newsContent.appendChild(card);
     });
+}
+
+// ---- Industry peers ----
+// Lower is "better" for valuation multiples, higher for margins/growth; colour the
+// stock's own cells against the peer median accordingly.
+const PEER_COLUMNS = [
+    { key: 'trailingPE',     label: 'P/E',       fmt: v => v?.toFixed(1),            lowerIsBetter: true },
+    { key: 'forwardPE',      label: 'Fwd P/E',   fmt: v => v?.toFixed(1),            lowerIsBetter: true },
+    { key: 'pegRatio',       label: 'PEG',       fmt: v => v?.toFixed(2),            lowerIsBetter: true },
+    { key: 'profitMargins',  label: 'Net margin', fmt: v => v != null ? (v * 100).toFixed(1) + '%' : null },
+    { key: 'revenueGrowth',  label: 'Rev growth', fmt: v => v != null ? (v * 100).toFixed(1) + '%' : null },
+    { key: 'marketCap',      label: 'Mkt cap',   fmt: v => v != null ? fmtBig(v, 'USD') : null },
+];
+
+function renderPeersSection(peers) {
+    const section = document.getElementById('peersSection');
+    if (!peers || !peers.rows?.length) { section.style.display = 'none'; return; }
+    section.style.display = 'block';
+    document.getElementById('peersIndustry').textContent = peers.industry ? `· ${peers.industry}` : '';
+
+    const cell = (col, row) => {
+        const text = col.fmt(row[col.key]) ?? '—';
+        const med = peers.medians?.[col.key];
+        if (!row.is_self || med == null || row[col.key] == null || col.key === 'marketCap') return `<td>${esc(text)}</td>`;
+        const better = col.lowerIsBetter ? row[col.key] < med : row[col.key] > med;
+        return `<td style="color:${better ? '#4caf50' : '#ff9800'}; font-weight:700;">${esc(text)}</td>`;
+    };
+    const rows = peers.rows.map(r => `
+        <tr style="${r.is_self ? 'background:#1c2633;' : ''}">
+            <td class="pf-stock" ${r.is_self ? '' : `onclick="quickSearch(${esc(JSON.stringify(r.name || r.ticker))}, ${esc(JSON.stringify(r.ticker))})" title="Open ${esc(r.name || r.ticker)}"`}>
+                <b>${esc(r.ticker)}</b><span>${esc((r.name || '').slice(0, 22))}</span></td>
+            ${PEER_COLUMNS.map(c => cell(c, r)).join('')}
+        </tr>`).join('');
+    const medianRow = `<tr style="border-top:1px solid #444;"><td style="color:#888; font-family:'Inter',sans-serif;">Peer median</td>
+        ${PEER_COLUMNS.map(c => `<td style="color:#888;">${c.key === 'marketCap' ? '' : esc(c.fmt(peers.medians?.[c.key]) ?? '—')}</td>`).join('')}</tr>`;
+    document.getElementById('peersTable').innerHTML = `<table class="pf-table">
+        <thead><tr><th>Company</th>${PEER_COLUMNS.map(c => `<th>${c.label}</th>`).join('')}</tr></thead>
+        <tbody>${rows}${medianRow}</tbody></table>`;
 }

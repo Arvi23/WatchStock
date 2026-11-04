@@ -98,3 +98,13 @@ and fetched at most 4 tickers at a time, to stay gentle with Yahoo. Thesis check
 explicit button per position (one LLM call each) and are stored with the thesis text as it
 was, so a later check can say what changed. Insider sales are skipped (routine diversification);
 purchases are signal.
+
+## D14 — Industry peers make P/E relative; US-listed stocks only (2026-11-04)
+Fixed P/E bands judged a software company and a bank by the same yardstick (D8). The
+snapshot now includes up to 5 of the largest companies in the stock's Yahoo industry
+(`yf.Industry(key).top_companies`). When at least 3 have a usable value, trailing and
+forward P/E are scored against the peer median (ratio bands), and the breakdown says
+e.g. "33.4 vs industry median 45.0 (-26%)". Otherwise the fixed bands still apply. Yahoo's
+industry lists are US companies, so non-USD stocks get no peers rather than a misleading
+comparison. Peer lists and peer metrics (one `info` call each) are cached in memory for
+24 h and fetched 4 at a time; a failed peer is skipped. Snapshot schema 3.

@@ -14,7 +14,8 @@ an AI-written research report you can question in a chat.
 2. Double-click **`start.bat`**.
    - The first start installs a small tool called `uv`, which downloads Python and the
      libraries WatchStock needs. This takes a few minutes, once. Nothing else needs to be installed.
-   - Your browser opens at `http://127.0.0.1:8000`.
+   - Your browser opens at `http://127.0.0.1:8000`, and a **WatchStock** shortcut is
+     put on your Desktop for next time.
 3. To stop WatchStock, close the black window.
 
 Optional: for AI reports and chat, open **Settings** (gear icon) and paste an
@@ -39,6 +40,8 @@ Download the new ZIP and copy your old `data` folder into it (or `git pull`).
 - **Finance tab:** opportunity score (fundamentals, analyst view, valuation, smart money,
   each with a click-for-breakdown), valuation multiples, analyst targets and rating
   changes, insider transactions, key metrics.
+- **Industry peers** (Finance tab, US stocks): the largest companies in the same industry
+  side by side; the valuation score compares P/E with the industry median.
 - **AI Analysis tab:** verdict, deep dive, news impact, bull/base/bear scenarios, charts.
   Reports are saved with their date and model.
 - **News tab:** recent headlines for the stock.
