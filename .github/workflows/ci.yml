@@ -38,7 +38,11 @@ jobs:
           git diff --exit-code -- static/vendor static/css
       - run: npx playwright install --with-deps chromium
       - name: UI smoke test (fake data)
+        # Run the server with the venv's python, not `uv run`: a still-running uv process
+        # holds uv's cache lock and breaks setup-uv's post-job cache prune.
         run: |
-          uv run python scripts/fake_server.py &
+          .venv/bin/python scripts/fake_server.py &
+          SERVER_PID=$!
           for i in $(seq 1 30); do curl -sf http://127.0.0.1:8001/api/health && break; sleep 1; done
           node scripts/ui_smoke.js
+          kill $SERVER_PID
