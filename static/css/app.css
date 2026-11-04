@@ -141,8 +141,8 @@ body {
 .hm-input { width: 100%; background: #111; border: 1px solid #2a2a2a; color: #e0e0e0; padding: 8px 10px; font-size: 0.8rem; outline: none; box-sizing: border-box; font-family: inherit; }
 .hm-input:focus { border-color: var(--accent); }
 .pf-table { width: 100%; border-collapse: collapse; font-size: 0.72rem; }
-.pf-table th { text-align: right; font-weight: 600; font-size: 0.58rem; letter-spacing: 1px; color: #777; padding: 6px 8px; border-bottom: 1px solid #333; text-transform: uppercase; }
-.pf-table td { text-align: right; padding: 7px 8px; border-bottom: 1px solid #222; font-family: monospace; color: #ddd; white-space: nowrap; }
+.pf-table th { text-align: right; font-weight: 600; font-size: 0.58rem; letter-spacing: 1px; color: #777; padding: 6px 5px; border-bottom: 1px solid #333; text-transform: uppercase; }
+.pf-table td { text-align: right; padding: 7px 5px; border-bottom: 1px solid #222; font-family: monospace; color: #ddd; white-space: nowrap; }
 .pf-table th:first-child, .pf-table td:first-child { text-align: left; }
 .pf-table tbody tr:hover { background: #1e1e1e; }
 .pf-stock { cursor: pointer; font-family: 'Inter', sans-serif; }

@@ -51,6 +51,18 @@ MIGRATIONS: list[str] = [
         updated_at TEXT NOT NULL
     );
     """,
+    # 3 — thesis checks: the LLM's verdict on whether "why I own it" still holds
+    """
+    CREATE TABLE thesis_checks (
+        id         INTEGER PRIMARY KEY AUTOINCREMENT,
+        ticker     TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        model      TEXT,
+        thesis     TEXT NOT NULL,   -- the notes as they were when checked
+        content    TEXT NOT NULL    -- JSON: status, summary, supporting, against, watch
+    );
+    CREATE INDEX idx_thesis_ticker ON thesis_checks (ticker, created_at);
+    """,
 ]
 
 

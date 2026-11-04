@@ -54,7 +54,30 @@ def fetch_quotes(tickers):
     def cur(t):
         return "RON" if t.endswith(".RO") else "USD"
 
-    return {t: {"price": 100.0, "change_pct": 1.2, "currency": cur(t)} for t in tickers}
+    def chg(t):
+        return -6.5 if t == "NVDA" else 1.2  # NVDA: a "big move" for the Today panel
+
+    return {t: {"price": 100.0, "change_pct": chg(t), "currency": cur(t)} for t in tickers}
+
+
+def fetch_events(ticker):
+    from datetime import date, timedelta
+
+    def d(n):
+        return (date.today() + timedelta(days=n)).isoformat()
+
+    if ticker == "MSFT":
+        return {
+            "earnings_dates": [d(3)],
+            "ex_dividend_date": d(5),
+            "upgrades_downgrades": [{"date": d(-1), "firm": "Example Securities", "action": "up",
+                                     "from_grade": "Hold", "to_grade": "Buy"}],
+            "insider_transactions": [],
+        }  # fmt: skip
+    if ticker == "NVDA":
+        return {"insider_transactions": [{"date": d(-2), "insider": "JANE DOE", "transaction": "Purchase",
+                                          "text": "", "value": 1_200_000}]}  # fmt: skip
+    return {}
 
 
 def fetch_indices():
@@ -107,6 +130,13 @@ REPORT = {
 
 
 def complete(messages, *, api_key, model, json_mode=True):
+    if "investor_thesis" in messages[-1]["content"]:
+        return json.dumps({
+            "status": "intact",
+            "summary": "Fake check: cloud growth is still visible in the numbers.",
+            "supporting": ["Revenue growth +12%"], "against": ["Valuation is rich"],
+            "watch": ["Next earnings"],
+        })  # fmt: skip
     if "COMPANY CONTEXT" in messages[0]["content"]:
         return json.dumps({"reply_text": "Fake chat answer.", "ui_action": None})
     report = dict(REPORT)
@@ -117,7 +147,7 @@ def complete(messages, *, api_key, model, json_mode=True):
 
 def install_fakes():
     for fn in (fetch_profile, fetch_news, fetch_quotes, fetch_indices, fetch_market_news,
-               fetch_movers, search):  # fmt: skip
+               fetch_movers, search, fetch_events):  # fmt: skip
         setattr(yahoo, fn.__name__, fn)
     openrouter.complete = complete
 

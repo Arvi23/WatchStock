@@ -183,3 +183,57 @@ def chat(
         "ui_action": parsed.get("ui_action"),
         "ui_actions": parsed.get("ui_actions"),
     }
+
+
+THESIS_STATUSES = ("intact", "weakening", "broken", "unclear")
+
+THESIS_SYSTEM_PROMPT = (
+    "You check whether a private investor's reason for owning a stock still holds. "
+    "You get their thesis in their own words and the current company data: metrics, "
+    "scores, analyst view and recent headlines (some may be noise).\n\n"
+    "Judge only what the thesis claims. Be concrete: cite numbers and headlines. If the "
+    "data can't confirm or refute a claim, say so instead of guessing. Not financial advice.\n\n"
+    "Return ONLY valid JSON:\n"
+    "{\n"
+    '  "status": "intact" | "weakening" | "broken" | "unclear",\n'
+    '  "summary": "2-3 sentences in plain language.",\n'
+    '  "supporting": ["evidence that the thesis still holds", ...],\n'
+    '  "against": ["evidence that it is weakening or wrong", ...],\n'
+    '  "watch": ["what to keep an eye on next", ...]\n'
+    "}"
+)
+
+
+def run_thesis_check(stock: dict[str, Any], thesis: str) -> dict[str, Any]:
+    """Ask the LLM whether `thesis` still holds for this stock; store and return it."""
+    api_key, model = llm_settings()
+    context = {"investor_thesis": thesis, "company": compact_context(stock)}
+    if previous := store.latest_thesis_check(stock["ticker"]):
+        context["previous_check"] = {
+            k: previous.get(k) for k in ("created_at", "status", "summary")
+        }
+    reply = openrouter.complete(
+        [
+            {"role": "system", "content": THESIS_SYSTEM_PROMPT},
+            {"role": "user", "content": json.dumps(context, default=str)},
+        ],
+        api_key=api_key,
+        model=model,
+    )
+    try:
+        result = parse_llm_json(reply)
+    except ValueError as exc:
+        raise LLMError(
+            "The model's reply wasn't valid JSON. Try again or pick another model."
+        ) from exc
+    status = str(result.get("status", "")).strip().lower()
+    if status not in THESIS_STATUSES or not result.get("summary"):
+        raise LLMError("The model's reply was missing a valid status or summary.")
+    clean = {
+        "status": status,
+        "summary": str(result["summary"]),
+        **{
+            k: [str(x) for x in result.get(k) or []][:8] for k in ("supporting", "against", "watch")
+        },
+    }
+    return store.save_thesis_check(stock["ticker"], model, thesis, clean)

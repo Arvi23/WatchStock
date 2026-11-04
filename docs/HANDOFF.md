@@ -73,24 +73,33 @@ Read this first. Update it at the end of every batch or before your context runs
       which half drags it down; scores round half up
 - [x] 76 backend tests; UI smoke covers the portfolio flow
 
-### Batch 5 — Staying on top of it
-- Morning digest of holdings (earnings / ex-dividend dates, big moves, insider buys, rating changes)
-- Industry peer comparison; thesis tracking ("why I bought" checked against new data)
+### Batch 5 — Staying on top of it  *(branch `batch-5-today`, PR #5, stacked on #4)* ✅
+- [x] "Your stocks · next 2 weeks" panel (home, right column): earnings and ex-dividend dates within
+      14 days, |day move| ≥ 3%, analyst rating changes in the last 7 days, insider purchases in the
+      last 30 days; held stocks first (`today.py`, `/api/today`, D13)
+- [x] `yahoo.fetch_events` (calendar + ratings + insider), cached 6 h per ticker, max 4 parallel
+- [x] Thesis check per position (`/api/portfolio/{t}/thesis`, migration 3 `thesis_checks`): status
+      intact / weakening / broken / unclear + evidence for/against + what to watch; badge in the
+      portfolio table; previous check passed to the next one
+- [x] 88 backend tests; UI smoke covers the Today panel and thesis flow
+
+### Batch 6 — Next (not started)
+1. **Peer comparison** (deferred from batch 5): fetch 4-6 industry peers (yfinance
+   `Ticker.info["industryKey"]` → `yf.Industry(key).top_companies`), show a small
+   peer table (P/E, fwd P/E, PEG, margin, growth) on the Finance tab, and make the valuation
+   P/E bands relative to the peer median (see D8). Cache peers per industry for a day.
+2. **Price chart fallback** if TradingView's free widget lacks BVB data (owner to confirm):
+   `Ticker.history(period="1y")` → Chart.js line chart.
+3. **Desktop shortcut** created by `start.bat` on first run (dad-friendliness).
+4. Optional: scheduled morning digest (email or Windows toast) once the panel proves useful.
 
 ## Status
-Batches 1-4 done. PRs #1-#4 (stacked) wait for the owner to merge; files are copied to the
-owner's folder after each batch. Next: batch 5.
+**Paused 2026-11-04 after batch 5** (owner: "we'll stop for today"). Batches 1-5 done;
+PRs #1-#5 are stacked, CI-green, and wait for the owner to merge in order. The owner's folder
+`E:\WatchStock\WatchStock` has everything through batch 5. Next session: start with
+batch 6 (plan above), after checking the "Needs live testing" boxes the owner has reported back on.
 
 Notes for the next agent:
-- Batch 5 candidates, in order of value for the owner:
-  1. Morning digest for holdings + watchlist: earnings dates / ex-dividend dates
-     (`Ticker.calendar`), moves > 5%, new rating changes, new insider buys. Start as a
-     "Today" panel on the home screen computed on load (no scheduler needed); a
-     scheduled email/notification can come later.
-  2. Thesis check: an LLM call per position comparing `holdings.notes` with the current
-     snapshot and latest news ("still holds / weakening / broken" + why), on demand.
-  3. Peer comparison (same industry via yfinance `Industry`/`Sector`) to make P/E bands
-     industry-relative (see D8).
 - The sidebar "you own" P/L uses the snapshot price (up to 4 h old); the portfolio table
   uses live quotes. Fine for now; unify if the owner notices.
 - For screenshots/tests: `scripts/fake_server.py` + `node scripts/ui_smoke.js` (needs
@@ -123,6 +132,12 @@ Batch 4:
 - [ ] Click a row → opens the stock; sidebar shows "You own ..."
 - [ ] Edit a position, then remove it (click REMOVE twice)
 - [ ] Sidebar "Stability" circle; its breakdown explains a low score from high beta
+
+Batch 5:
+- [ ] "Your stocks · next 2 weeks" shows real earnings / ex-dividend dates for held + starred stocks
+      (dates come from Yahoo's calendar; spot-check one against the company's IR page)
+- [ ] Add a "why I own it" note to a position → CHECK → verdict with evidence appears; badge in table
+- [ ] The free model returns valid JSON for the thesis check (if not: note the error text)
 
 ## Open questions for the owner
 - (answered) Dad holds mostly US stocks → currency formatting stays in batch 3, no rush.

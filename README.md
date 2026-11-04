@@ -31,7 +31,11 @@ Download the new ZIP and copy your old `data` folder into it (or `git pull`).
 
 - **Home:** major indices, market news, today's biggest movers, your watchlist, and
   **My Portfolio**: your positions with value, profit/loss, today's change, weights,
-  sector allocation, concentration warnings and expected yearly dividends.
+  sector allocation, concentration warnings and expected yearly dividends, plus
+  **Your stocks · next 2 weeks**: upcoming earnings and ex-dividend dates, big moves,
+  analyst rating changes and insider buys for the stocks you own or watch.
+- **Thesis check:** write down why you own a position; the AI checks whether that reason
+  still holds against the latest numbers and news.
 - **Finance tab:** opportunity score (fundamentals, analyst view, valuation, smart money,
   each with a click-for-breakdown), valuation multiples, analyst targets and rating
   changes, insider transactions, key metrics.

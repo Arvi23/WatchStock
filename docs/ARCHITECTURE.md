@@ -8,18 +8,20 @@ watchstock/app.py            FastAPI app factory, error → 502 mapping, static 
    ├── routes/stocks.py      /api/search, /api/stocks/{t}, /api/stocks/{t}/analysis, /api/chat
    ├── routes/market.py      /api/market/{indices,news,movers}   (TTL-cached, degrade to empty)
    ├── routes/personal.py    /api/watchlist, /api/settings
-   └── routes/portfolio.py   /api/portfolio (GET overview, PUT position, DELETE position)
+   ├── routes/portfolio.py   /api/portfolio (GET overview, PUT/DELETE position, GET/POST {t}/thesis)
+   └── routes/today.py       /api/today (events for held + watched stocks)
         │
         ├── services.py      snapshot freshness: cache hit / live fetch / stale fallback
         ├── scoring.py       pure scoring functions → opportunity pillars + safety, with breakdowns
         ├── symbols.py       Yahoo ↔ TradingView ticker translation
         ├── portfolio.py     pure portfolio math: value, P/L, weights, allocation, flags, dividends
-        ├── analysis.py      LLM prompts: report + chat (compact context)
+        ├── today.py         pure "Today" event builder (earnings, ex-div, moves, ratings, insider buys)
+        ├── analysis.py      LLM prompts: report, chat, thesis check (compact context)
         ├── store.py         every SQL query
         ├── db.py            connection + migrations (PRAGMA user_version)
         ├── ttl_cache.py     in-memory TTL cache for widgets
         └── providers/       the only code that touches the network
-             ├── yahoo.py       yfinance: profile, news, quotes, search, screeners
+             ├── yahoo.py       yfinance: profile, news, quotes, events (calendar), search, screeners
              └── openrouter.py  chat completions
 ```
 
@@ -36,7 +38,8 @@ watchstock/app.py            FastAPI app factory, error → 502 mapping, static 
 | `js/scores.js` | breakdown popover + safety modal |
 | `js/settings.js` | settings modal |
 | `js/home.js` | indices, market news, movers, watchlist, search history |
-| `js/portfolio.js` | portfolio totals/table/doughnuts, add/edit modal, "you own" sidebar line |
+| `js/portfolio.js` | portfolio totals/table/doughnuts, add/edit modal, thesis check, "you own" line |
+| `js/today.js` | "Your stocks · next 2 weeks" panel |
 | `js/dashboard.js` | sidebar, finance tab, metric cards, news tab |
 | `js/analysis.js` | AI report rendering/requesting, JSON export |
 | `js/chat.js` | chat panel and the UI actions the model may request |
@@ -104,6 +107,7 @@ opens the browser. See D10.
 | `snapshots` | latest successful fetch per ticker (JSON) + `fetched_at` |
 | `analyses` | every successful AI report (JSON) + model + `created_at` |
 | `holdings` | one row per position: shares, avg cost, currency, notes ("why I own it") |
+| `thesis_checks` | every thesis check (JSON: status, summary, supporting, against, watch) + the thesis text |
 
 ## Testing
 
