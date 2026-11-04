@@ -49,7 +49,9 @@ Read this first. Update it at the end of every batch or before your context runs
 - Industry peer comparison; thesis tracking ("why I bought" checked against new data)
 
 ## Status
-Batch 1 done. Next: batch 2. Start with the analyst score + dividend unit + currency
+Batch 1 done; PR #1 green on CI (Ubuntu + Windows), **waiting for the owner to merge**
+(agents can't self-merge in this environment). Branch further batches off `main` after
+it's merged, or stack on `batch-1-foundation` if it isn't yet. Next: batch 2. Start with the analyst score + dividend unit + currency
 mismatch in `scoring.py`/`providers/yahoo.py`, updating `tests/test_scoring.py` as formulas change.
 
 Batch 1 notes for the next agent:
