@@ -24,6 +24,11 @@ from typing import Any
 Breakdown = list[dict[str, Any]]
 
 
+def _round_score(x: float) -> int:
+    """Round half up (Python's round() is half-to-even: round(48.5) == 48)."""
+    return int(x + 0.5)
+
+
 def _clamp(x: float) -> float:
     return max(0.0, min(100.0, x))
 
@@ -32,7 +37,7 @@ def _item(label: str, score: float | None = None, weight: float | None = None,
           note: str | None = None) -> dict[str, Any]:  # fmt: skip
     return {
         "item": label,
-        "score": None if score is None else round(score),
+        "score": None if score is None else _round_score(score),
         "weight": None if weight is None else f"{weight * 100:.0f}%",
         "note": note,
     }
@@ -45,7 +50,7 @@ def _combine(components: list[tuple[str, float, float]], extra: Breakdown | None
     if total == 0:
         return {"score": 50, "breakdown": breakdown + [_item("Not enough data: neutral 50")]}
     score = sum(s * w for _, s, w in components) / total
-    return {"score": round(score), "breakdown": breakdown}
+    return {"score": _round_score(score), "breakdown": breakdown}
 
 
 def _bucket(value: float, thresholds: list[tuple[float, float]], otherwise: float) -> float:
@@ -187,7 +192,7 @@ def score_analyst(metrics: dict, analyst_data: dict) -> dict:
         delta = 10 if upside > 30 else 5 if upside > 10 else -10 if upside < 0 else 0
         score += delta
         breakdown.append(_item(f"Price-target upside {upside:+.1f}%", note=f"{delta:+d} points"))
-    return {"score": round(_clamp(score)), "breakdown": breakdown, "upside_pct": upside}
+    return {"score": _round_score(_clamp(score)), "breakdown": breakdown, "upside_pct": upside}
 
 
 # ----------------------------------------------------------------- smart money
@@ -241,7 +246,7 @@ PILLAR_LABELS = {
 
 
 def calculate_opportunity_score(pillars: dict[str, dict]) -> dict:
-    score = round(sum(pillars[k]["score"] * w for k, w in OPPORTUNITY_WEIGHTS.items()))
+    score = _round_score(sum(pillars[k]["score"] * w for k, w in OPPORTUNITY_WEIGHTS.items()))
     label, color = (
         ("Strong Opportunity", "#4caf50") if score >= 75 else
         ("Moderate Opportunity", "#8bc34a") if score >= 60 else
@@ -292,12 +297,20 @@ def calculate_safety(metrics: dict) -> dict:
     de = metrics.get("debtToEquity")
     if de is not None and not financial:
         # Yahoo: percent. 0% -> 100, 200% (2x) -> 0
-        lt.append((f"Debt/Equity {de / 100:.2f}x", _clamp(100 - de / 2.0), 0.5))
+        lt.append((f"Debt/Equity {de / 100:.2f}x (debt load)", _clamp(100 - de / 2.0), 0.5))
     elif de is not None:
         lt_extra.append(_item("Debt/Equity skipped", note="not meaningful for financial companies"))
     if (beta := metrics.get("beta")) is not None:
         # beta 0.5 -> 100, 1.5 -> 50, 2.5 -> 0
-        lt.append((f"Beta {beta:.2f}", _clamp(100 - (beta - 0.5) * 50), 0.5))
+        lt.append(
+            (f"Beta {beta:.2f} (volatility vs the market)", _clamp(100 - (beta - 0.5) * 50), 0.5)
+        )
+    # One blended number can hide which half is the problem (e.g. no debt but very
+    # volatile reads as a mediocre "stability"), so say it outright.
+    if len(lt) == 2 and abs(lt[0][1] - lt[1][1]) >= 40:
+        weak = "volatility" if lt[1][1] < lt[0][1] else "debt"
+        strong = "debt" if weak == "volatility" else "volatility"
+        lt_extra.append(_item(f"Held down by {weak}; {strong} looks healthy"))
 
     country = metrics.get("country")
     if country in _GEO_FLAGS:

@@ -98,4 +98,5 @@ def get_stock(ticker: str, *, name: str = "", refresh: bool = False) -> dict[str
 
     stock["ai_analysis"] = store.latest_analysis(ticker)
     stock["tradingview_symbol"] = symbols.tradingview_symbol(ticker)
+    stock["holding"] = store.get_holding(ticker)  # None unless it's in the portfolio
     return stock

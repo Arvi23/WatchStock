@@ -29,7 +29,9 @@ Download the new ZIP and copy your old `data` folder into it (or `git pull`).
 
 ## What it shows
 
-- **Home:** major indices, market news, today's biggest movers, your watchlist.
+- **Home:** major indices, market news, today's biggest movers, your watchlist, and
+  **My Portfolio**: your positions with value, profit/loss, today's change, weights,
+  sector allocation, concentration warnings and expected yearly dividends.
 - **Finance tab:** opportunity score (fundamentals, analyst view, valuation, smart money,
   each with a click-for-breakdown), valuation multiples, analyst targets and rating
   changes, insider transactions, key metrics.

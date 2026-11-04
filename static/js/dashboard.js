@@ -380,6 +380,7 @@ function populateDashboard(data) {
     sbMarketCap.innerText = cap;
     const price = metrics.currentPrice;
     sbPrice.innerText = fmtMoney(price, metrics.currency || 'USD');
+    renderHoldingLine(data);
 
     // --- TradingView Widget ---
     const tvContainer = document.getElementById('tradingViewContainer');

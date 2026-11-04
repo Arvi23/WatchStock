@@ -39,6 +39,18 @@ MIGRATIONS: list[str] = [
     );
     CREATE INDEX idx_analyses_ticker ON analyses (ticker, created_at);
     """,
+    # 2 — portfolio: one row per position (the user maintains shares + average cost)
+    """
+    CREATE TABLE holdings (
+        ticker     TEXT PRIMARY KEY,
+        shares     REAL NOT NULL CHECK (shares > 0),
+        avg_cost   REAL NOT NULL CHECK (avg_cost >= 0),
+        currency   TEXT,
+        notes      TEXT NOT NULL DEFAULT '',   -- "why I own it"; used for thesis checks later
+        added_at   TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+    );
+    """,
 ]
 
 

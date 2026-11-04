@@ -79,3 +79,13 @@ unpinned CDN update can't break it again (that's how the report links broke). Ta
 Play CDN (a runtime compiler, not meant for production) is replaced by a precompiled
 `static/css/tailwind.css`, which CI checks is up to date. Node is a developer-only tool.
 All LLM markdown goes through DOMPurify, with images forbidden.
+
+## D12 — Portfolio: one row per position, per-currency totals, no FX (2026-11-04)
+The user enters each position as shares + average cost (not individual lots): that's
+how a small-portfolio owner thinks about it, and it's easy to keep current. Totals,
+weights and concentration are computed per currency; there is no FX conversion,
+because a guessed or stale rate would make every total quietly wrong (the owner is
+mostly USD). Adding a position validates the ticker by fetching and caching its
+snapshot, which also gives sector/country/dividend rate for allocation. A position's
+`notes` ("why I own it") is stored now so batch 5 can check the thesis against new data.
+Scores are rounded half up (49, not Python's banker's 48) so people can check them by hand.
