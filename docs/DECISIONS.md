@@ -43,3 +43,27 @@ The old "DB-first" design served data from the DB forever (a May price was shown
 current in November) and also stored failed fetches. Now each ticker has one snapshot
 with `fetched_at`; it's served only while younger than `SNAPSHOT_TTL`, and the UI shows
 its age. AI analyses are stored separately with their own timestamp and model.
+
+## D8 — Two scoring lenses, no double counting (2026-11-04)
+The hackathon had "health" (ST/LT) and "opportunity" scores that both used current
+ratio, margins and debt/equity. Now:
+- **Opportunity** = Quality 30% (margins, growth, FCF yield) + Valuation 30% +
+  Analyst 25% + Smart money 15%.
+- **Safety** (sidebar) = Liquidity (current/quick ratio) and Solvency & volatility
+  (debt/equity, beta).
+Each metric feeds exactly one score. Missing inputs are skipped and the weights
+renormalised; no inputs gives a neutral 50. Geographic risk is a flag, not a penalty
+(HQ country says little about exposure). Analyst consensus with few analysts is shrunk
+toward 50 instead of multiplied down. Loss-makers get a low valuation score instead of
+the P/E being silently skipped. Debt/equity is skipped for financial companies. FCF yield
+is skipped when statements and price are in different currencies. P/E bands are still
+industry-agnostic, to be fixed by peer comparison (batch 5).
+
+## D9 — Snapshot schema version (2026-11-04)
+Snapshots carry `schema`. When the shape changes, bump `services.SNAPSHOT_SCHEMA` and
+cached snapshots in the old shape are refetched instead of breaking the UI.
+
+## D10 — Logs to a file, browser opens when the server is up (2026-11-04)
+Windows console QuickEdit mode blocks any process writing to a console the user has
+clicked into, which looks like a freeze. Logs go to `data/watchstock.log`; the console only
+shows the startup banner. The browser opens after `/api/health` answers.

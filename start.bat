@@ -31,6 +31,7 @@ echo Starting WatchStock... (the first start can take a few minutes)
 uv run --frozen --no-dev python -m watchstock
 if errorlevel 1 (
     echo.
-    echo [ERROR] WatchStock stopped with an error. See the messages above.
+    echo [ERROR] WatchStock stopped with an error.
+    echo         Details are in data\watchstock.log
     pause
 )

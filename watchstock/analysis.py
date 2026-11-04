@@ -49,7 +49,7 @@ def compact_context(stock: dict[str, Any]) -> dict[str, Any]:
         "analyst_data": stock.get("financial_data", {}).get("analyst_data", {}),
         "key_officers": (stock.get("financial_data", {}).get("key_officers") or [])[:3],
         "risk_analysis": stock.get("risk_analysis", {}),
-        "health_scores": stock.get("health_scores"),
+        "safety": stock.get("safety"),
         "scores": stock.get("scores"),
         "news": [
             {k: n.get(k) for k in ("title", "publisher", "published_at", "summary")}
@@ -67,8 +67,10 @@ ANALYSIS_SYSTEM_PROMPT = (
     "- `metrics`: ratios and valuation multiples (P/E, PEG, P/B, margins, debt/equity "
     "(Yahoo reports it in percent, 150 = 1.5x), beta, marketCap, EPS, revenue growth)\n"
     "- `analyst_data`: Wall Street consensus, price targets, recommendation rating\n"
-    "- `scores`: opportunity, fundamental, analyst, valuation, smart money (0-100)\n"
-    "- `health_scores`: short_term (liquidity) and long_term (solvency) 0-100\n"
+    "- `scores`: opportunity (0-100) built from quality, valuation, analyst and smart-money "
+    "pillars, each with a breakdown of what drove it\n"
+    "- `safety`: short_term (liquidity) and long_term (solvency & volatility) 0-100, plus flags\n"
+    "- `previous_report` (may be absent): your last report on this stock and its date\n"
     "- `news`: recent headlines. Decide yourself which ones are material.\n\n"
     "INSTRUCTIONS:\n"
     "1. Interpret the numbers, don't just list them.\n"
@@ -84,6 +86,8 @@ ANALYSIS_SYSTEM_PROMPT = (
     '  "financial_deep_dive": "Rich markdown analysis, min 200 words.",\n'
     '  "news_impact_analysis": "Rich markdown analysis, min 150 words.",\n'
     '  "risk_scenarios": "Rich markdown with ## Bull Case, ## Base Case, ## Bear Case.",\n'
+    '  "changes_since_last": "If previous_report exists: short markdown on what changed '
+    'since then and whether the verdict changed and why. Otherwise null.",\n'
     '  "charts": [\n'
     '    {"chart_type": "bar", "labels": ["P/E", "P/B", "EV/EBITDA"], '
     '"values": [28.5, 4.2, 18.1], "title": "Valuation Multiples"}\n'
@@ -99,10 +103,15 @@ ANALYSIS_SYSTEM_PROMPT = (
 def run_analysis(stock: dict[str, Any]) -> dict[str, Any]:
     """Generate, validate and store an analysis report. Raises LLMError."""
     api_key, model = llm_settings()
+    context = compact_context(stock)
+    if previous := store.latest_analysis(stock["ticker"]):
+        context["previous_report"] = {
+            k: previous.get(k) for k in ("created_at", "verdict", "executive_summary")
+        }
     reply = openrouter.complete(
         [
             {"role": "system", "content": ANALYSIS_SYSTEM_PROMPT},
-            {"role": "user", "content": json.dumps(compact_context(stock), default=str)},
+            {"role": "user", "content": json.dumps(context, default=str)},
         ],
         api_key=api_key,
         model=model,

@@ -49,6 +49,23 @@ const local = {
     model: document.getElementById('aiModelLabel').textContent,
     link: document.querySelector('#financialDeepDiveContent a')?.outerHTML,
   }));
+  // score breakdown popover + safety modal
+  await page.click('.tab-btn[data-target="tab-finance"]');
+  await page.click('[data-score-key="quality"]');
+  await page.waitForTimeout(300);
+  state.popover = await page.evaluate(() => document.getElementById('popoverContent').innerText.slice(0, 160));
+  await page.screenshot({ path: process.env.OUT + '/popover.png' });
+  await page.evaluate(() => { hideScoreBreakdown(); showScoreExplanation('long_term'); });
+  await page.waitForTimeout(300);
+  state.safetyModal = await page.evaluate(() => document.getElementById('scoreModalBody').innerText.slice(0, 160));
+  await page.screenshot({ path: process.env.OUT + '/safety.png' });
+  await page.evaluate(() => closeScoreModal());
+  state.dividendCard = await page.evaluate(() => [...document.querySelectorAll('#metricCards > div')].map(d => d.innerText).find(t => /dividend/i.test(t)));
+  // no API key: analysis must not auto-run
+  await page.evaluate(async () => { await api('/api/settings', { method: 'PUT', body: { llm_api_key: '' } }); await refreshLlmStatus(); });
+  await page.evaluate(() => quickSearch('Apple', 'AAPL'));
+  await page.waitForTimeout(1500);
+  state.noKeySummary = await page.evaluate(() => document.getElementById('aiSummary').innerText);
   await page.evaluate(() => quickSearch('Fail Corp', 'FAIL'));
   await page.waitForTimeout(1500);
   state.toast = await page.evaluate(() => document.getElementById('toastMsg').textContent);

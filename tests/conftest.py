@@ -16,7 +16,7 @@ SAMPLE_METRICS = {
     "priceToBook": 10.2, "priceToSalesTrailingTwelveMonths": 12.0, "enterpriseToEbitda": 22.0,
     "currentPrice": 414.0, "fiftyTwoWeekHigh": 468.0, "fiftyTwoWeekLow": 344.0,
     "fiftyDayAverage": 420.0, "twoHundredDayAverage": 410.0, "marketCap": 3.08e12, "beta": 0.9,
-    "dividendYield": 0.88, "dividendRate": 3.64, "payoutRatio": 0.25,
+    "dividendYield": 0.0088, "dividendRate": 3.64, "payoutRatio": 0.25,
     "shortPercentOfFloat": 0.008, "shortRatio": 1.9, "heldPercentInstitutions": 0.74,
     "heldPercentInsiders": 0.015, "country": "United States", "website": "https://www.microsoft.com",
     "sector": "Technology", "industry": "Software", "currency": "USD", "financialCurrency": "USD",

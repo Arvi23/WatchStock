@@ -189,3 +189,41 @@ def test_market_widgets_degrade_to_empty(client, fake_yahoo):
 def test_index_and_health(client):
     assert "WatchStock" in client.get("/").text
     assert client.get("/api/health").json()["ok"] is True
+
+
+# ------------------------------------------------------------------- batch 2
+
+
+def test_snapshot_from_older_schema_is_refetched(client, fake_yahoo):
+    from watchstock import store
+
+    store.save_snapshot(
+        "MSFT", "Microsoft", {"ticker": "MSFT", "health_scores": {}}, store.utcnow_iso()
+    )
+    body = client.get("/api/stocks/MSFT").json()
+    assert body["source"] == "live"
+    assert "safety" in body
+
+
+def test_stock_includes_tradingview_symbol(client):
+    assert client.get("/api/stocks/TLV.RO").json()["tradingview_symbol"] == "BVB:TLV"
+
+
+def test_second_report_sees_the_previous_one(client, fake_llm):
+    import json
+
+    client.put("/api/settings", json={"llm_api_key": "sk-test"})
+    client.post("/api/stocks/MSFT/analysis")
+    client.post("/api/stocks/MSFT/analysis")
+    first_ctx = json.loads(fake_llm.requests[0]["messages"][1]["content"])
+    second_ctx = json.loads(fake_llm.requests[1]["messages"][1]["content"])
+    assert "previous_report" not in first_ctx
+    assert second_ctx["previous_report"]["executive_summary"] == "Solid."
+
+
+def test_default_model_used_when_unset(client, fake_llm):
+    from watchstock import config
+
+    client.put("/api/settings", json={"llm_api_key": "sk-test"})
+    client.post("/api/stocks/MSFT/analysis")
+    assert fake_llm.requests[0]["model"] == config.DEFAULT_LLM_MODEL

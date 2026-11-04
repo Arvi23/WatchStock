@@ -9,6 +9,12 @@ Yahoo quirks handled here (keep this list current):
 - News comes in two shapes: `{"content": {...}}` (Ticker.get_news, 2025+) and the
   older flat shape (Search.news). `normalize_news_item` accepts both.
 - Insider-transaction "Transaction" is often NaN; infer buy/sell from "Text".
+- `dividendYield` switched from a fraction to a percent in 2025 (0.88 means 0.88%).
+  We expose it as a fraction like every other ratio: dividendRate / price when
+  both exist, else dividendYield / 100.
+- For foreign companies listed in the US, statement values (freeCashflow,
+  totalRevenue...) are in `financialCurrency` while price/marketCap are in
+  `currency`. Both are exposed; scoring skips ratios that would mix them.
 """
 
 import math
@@ -66,6 +72,15 @@ def _is_blank(value: Any) -> bool:
 # ------------------------------------------------------------------ profile
 
 
+def _dividend_yield(info: dict[str, Any], price: float | None) -> float | None:
+    """Dividend yield as a fraction (0.0088 = 0.88%). See module docstring."""
+    rate = _clean(info.get("dividendRate"))
+    if rate and price:
+        return round(rate / price, 6)
+    raw = _clean(info.get("dividendYield"))
+    return None if raw is None else round(raw / 100, 6)
+
+
 def fetch_profile(ticker: str) -> dict[str, Any]:
     """Fundamentals, analyst consensus, officers, rating changes, insider trades."""
     try:
@@ -81,6 +96,7 @@ def fetch_profile(ticker: str) -> dict[str, Any]:
 
     metrics = {k: _clean(info.get(k)) for k in _METRIC_FIELDS}
     metrics["currentPrice"] = _clean(price)
+    metrics["dividendYield"] = _dividend_yield(info, metrics["currentPrice"])
     analyst = {k: _clean(info.get(k)) for k in _ANALYST_FIELDS}
 
     officers = [
