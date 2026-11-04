@@ -30,7 +30,7 @@ function showScoreBreakdown(key, event) {
     const data    = currentRawData.scores[key];
     if (!data) return;
     const comp = currentRawData.scores.opportunity?.components?.find(c => c.key === key);
-    document.getElementById('popoverTitle').textContent = (comp?.label || key).toUpperCase() + ' — BREAKDOWN';
+    document.getElementById('popoverTitle').textContent = t('{label} — BREAKDOWN', { label: (comp?.label || key).toUpperCase() });
 
     let html = renderBreakdownItems(data.breakdown);
 
@@ -69,7 +69,7 @@ function toggleExtra(id, btn) {
     const showing = el.style.display !== 'none';
     el.style.display = showing ? 'none' : 'block';
     const n = el.querySelectorAll('[style*="border-bottom"]').length || '';
-    btn.textContent = showing ? `SHOW ${n} MORE` : 'SHOW LESS';
+    btn.textContent = showing ? t('SHOW {n} MORE', { n }) : t('SHOW LESS');
 }
 
 document.addEventListener('click', e => {
@@ -91,7 +91,7 @@ function showScoreExplanation(type) {
     if (!safety?.[type]) return;
     const data = safety[type];
     const label = type === 'short_term' ? 'Liquidity (short term)' : 'Stability: debt & volatility (long term)';
-    document.getElementById('scoreModalTitle').innerText = `${label} — ${data.score}/100`;
+    document.getElementById('scoreModalTitle').innerText = `${t(label)} — ${data.score}/100`;
     document.getElementById('scoreModalBody').innerHTML = renderBreakdownItems(data.breakdown) +
         `<div style="margin-top:14px; font-size:0.65rem; color:#666; line-height:1.5;">The score is the weighted average of the items with a bar. Lines without a bar explain what was skipped or flagged.</div>`;
     document.getElementById('scoreModal').style.display = 'flex';

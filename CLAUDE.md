@@ -51,7 +51,15 @@ the right Python and dependencies by itself. Nothing needs to be pre-installed.
 - LLM output is untrusted: render markdown only through `renderMarkdown()` (DOMPurify).
   Never assign model text to `innerHTML` directly. Escape external text with `esc()`.
 - Money: use `fmtMoney`/`fmtBig` with `priceCurrency()` for prices and
-  `statementCurrency()` for statement values. Never hardcode `$`.
+  `statementCurrency()` for statement values. Never hardcode `$`. Other displayed numbers
+  go through `fmtN()` (locale-aware); numbers used in CSS stay plain.
+- **Every user-visible string is translatable (English / Romanian)**, English text = key:
+  - Frontend: exact static strings are translated automatically. Just add the English →
+    Romanian pair to `RO` in `static/js/i18n.js`. Strings with variables use
+    `t('Saved {ticker}.', { ticker })`. Mark containers of external/LLM text `no-i18n`.
+  - Backend: `tr("Net margin {pct}", pct=num(x) + "%")` with the pair in `watchstock/i18n.py`.
+  - `tests/test_i18n.py` fails if a string is missing from either dictionary. Never name a
+    local variable `t` in frontend code (it shadows the translator).
 - Keep the UI simple. Every new panel must earn its place for a portfolio owner.
 
 ## Workflow

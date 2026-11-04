@@ -92,6 +92,35 @@ Read this first. Update it at the end of every batch or before your context runs
 - [x] Debt/Equity card shows "0.30x" like the breakdown (Yahoo's raw value is percent)
 - [x] 96 backend tests; UI smoke checks the peer table and relative P/E
 
+### Batch 7 — English / Romanian  *(branch `batch-7-language`, PR #7, stacked on #6)* ✅
+- [x] EN/RO switch in the home top bar and in Settings (`ws_lang` cookie, page reload) (D15)
+- [x] Frontend: `static/js/i18n.js` dictionary (~300 strings), automatic translation of static and
+      inserted text, `t()` for strings with variables, `fmtN()` + locale-aware money/dates
+- [x] Backend: `watchstock/i18n.py` (`tr`, `num`), middleware sets the request language; score
+      breakdowns, labels, flags, Today events (Romanian dates), portfolio flags, warnings and errors
+      localised; scores computed at serve time; LLM writes reports/thesis checks/chat in Romanian
+- [x] `tests/test_i18n.py` enforces complete dictionaries; UI smoke audits Romanian pages for
+      leftover English. Caught: a MutationObserver infinite loop on identical translations, and
+      the logo turning into "WatchAcțiune"
+
+### Batch 8 — History, Tradeville import, highlights, model presets (next)
+- **Tradeville import** (owner sent a real export 2026-11-04; NOT in the repo, keep it that way;
+  build a synthetic fixture). Format: first line `SEP=\t`, then a tab-separated header. Columns:
+  `simbol` (e.g. `US.APLD`, `US.COHRn`, `US.OUSTc`: strip the `US.` prefix and trailing lowercase
+  class letters; BVB symbols presumably have no prefix → `.RO`), `sold` = shares,
+  `costm` = average cost, `ppiata` = market price, `valuta` = currency, `nume` = name,
+  `isin`, `tsim` = `actiuni` (shares) or `bani` (cash row; skip, maybe show cash). Decimal point
+  is `.`. Use the ISIN (`yf.Search(isin)`) as a fallback when a ticker doesn't resolve. Preview
+  before saving; replace vs merge choice. The owner's dad has ~36 US positions.
+- **Today panel with ~36 holdings**: currently fetches calendar + ratings + insider per ticker
+  (3 Yahoo requests each, cached 6 h, 4 in parallel): fine but slow on first load. Consider
+  calendar-only for the first pass and loading ratings/insider lazily.
+- **Portfolio history**: 1-year chart of the current holdings' value (from `Ticker.history`)
+  vs the S&P 500, plus a daily recorded total going forward.
+- **Price highlights**: optional "below X / above Y" per position → highlighted row + a line in
+  the "Your stocks" panel. No notifications (the owner said no alerts; app isn't open 24/7).
+- **Model presets** in Settings (free nemotron default + one or two good paid options).
+
 ### Ideas for later (not planned)
 - Own price chart (`Ticker.history`) if TradingView ever fails for a market the owner uses
   (owner confirmed TradingView works, including BVB, on 2026-11-04).
@@ -100,10 +129,10 @@ Read this first. Update it at the end of every batch or before your context runs
 - Portfolio history (value over time) — needs a daily snapshot job.
 
 ## Status
-Batches 1-6 done. PR #1 merged by the owner; #2-#6 are stacked and CI-green. **Owner action:**
-on PR #2 change the base to `main` (Edit next to the title), merge, click "Delete branch";
-GitHub then retargets #3 to `main`, and so on. (Agents may not merge or retarget PRs here.)
-The owner's folder `E:\WatchStock\WatchStock` has everything through batch 6.
+Batches 1-7 done. PR #1 merged by the owner; #2-#7 stacked, CI-green. **Owner action:** on PR #2
+change the base to `main` (Edit next to the title), merge, click "Delete branch"; GitHub then
+retargets #3 to `main`, and so on. (Agents may not merge or retarget PRs here.)
+The owner's folder `E:\WatchStock\WatchStock` has everything through batch 7. Next: batch 8.
 
 Notes for the next agent:
 - The sidebar "you own" P/L uses the snapshot price (up to 4 h old); the portfolio table
@@ -152,6 +181,13 @@ Batch 6:
 - [ ] Valuation breakdown shows "P/E ... vs industry median ..."
 - [ ] First start after the update creates a "WatchStock" shortcut on the Desktop, and it launches the app
 - [ ] Opening a stock for the first time is still reasonably fast (peers add up to 5 Yahoo calls, cached a day)
+
+Owner reported 2026-11-04 evening: batch 6 OK (peers make sense, Desktop shortcut works).
+
+Batch 7:
+- [ ] RO button (top right) switches everything to Romanian; EN switches back
+- [ ] A new AI report / thesis check / chat answer comes back in Romanian (free model quality varies)
+- [ ] Romanian wording reads naturally to the dad (send any odd phrases; they're in static/js/i18n.js)
 
 ## Open questions for the owner
 - (answered) Dad holds mostly US stocks → currency formatting stays in batch 3, no rush.

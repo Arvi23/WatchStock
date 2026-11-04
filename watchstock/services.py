@@ -11,6 +11,7 @@ from typing import Any
 from urllib.parse import urlparse
 
 from watchstock import config, peers, scoring, store, symbols, ttl_cache
+from watchstock.i18n import tr
 from watchstock.providers import yahoo
 from watchstock.providers.yahoo import MarketDataError
 
@@ -84,7 +85,7 @@ def build_snapshot(ticker: str, fallback_name: str = "") -> dict[str, Any]:
         news = yahoo.fetch_news(ticker)
     except MarketDataError as exc:
         log.warning("news fetch failed for %s: %s", ticker, exc)
-        news, warnings = [], ["News could not be loaded."]
+        news, warnings = [], ["News could not be loaded."]  # translated when served
 
     metrics = profile["metrics"]
     name = profile.get("name") or fallback_name or ticker
@@ -105,9 +106,17 @@ def build_snapshot(ticker: str, fallback_name: str = "") -> dict[str, Any]:
         "news": news,
         "warnings": warnings,
         "peers": comparison,
-        **scoring.compute_all(
-            metrics, profile["analyst_data"], comparison["medians"] if comparison else None
-        ),
+    }
+
+
+def with_scores(stock: dict[str, Any]) -> dict[str, Any]:
+    """Compute scores at serve time: they're cheap, follow the UI language, and formula
+    changes apply to cached snapshots immediately."""
+    fin = stock.get("financial_data", {})
+    medians = (stock.get("peers") or {}).get("medians")
+    return {
+        **stock,
+        **scoring.compute_all(fin.get("metrics", {}), fin.get("analyst_data", {}), medians),
     }
 
 
@@ -136,13 +145,17 @@ def get_stock(ticker: str, *, name: str = "", refresh: bool = False) -> dict[str
                 **cached["data"],
                 "source": "cache",
                 "stale": True,
-                "warnings": [f"Live data unavailable ({exc}). Showing the last saved data."],
+                "warnings": [
+                    tr("Live data unavailable ({err}). Showing the last saved data.", err=exc)
+                ],
             }
         else:
             store.save_snapshot(ticker, stock["company_name"], stock, stock["as_of"])
             stock = {**stock, "source": "live", "stale": False}
 
     stock["ai_analysis"] = store.latest_analysis(ticker)
+    stock = with_scores(stock)
+    stock["warnings"] = [tr(w) for w in stock.get("warnings") or []]
     stock["tradingview_symbol"] = symbols.tradingview_symbol(ticker)
     stock["holding"] = store.get_holding(ticker)  # None unless it's in the portfolio
     return stock

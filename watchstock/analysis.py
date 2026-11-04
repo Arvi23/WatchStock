@@ -5,6 +5,7 @@ import re
 from typing import Any
 
 from watchstock import config, store
+from watchstock.i18n import llm_language_instruction, tr
 from watchstock.providers import openrouter
 from watchstock.providers.openrouter import LLMError
 
@@ -116,7 +117,7 @@ def run_analysis(stock: dict[str, Any]) -> dict[str, Any]:
         }
     reply = openrouter.complete(
         [
-            {"role": "system", "content": ANALYSIS_SYSTEM_PROMPT},
+            {"role": "system", "content": ANALYSIS_SYSTEM_PROMPT + llm_language_instruction()},
             {"role": "user", "content": json.dumps(context, default=str)},
         ],
         api_key=api_key,
@@ -126,10 +127,10 @@ def run_analysis(stock: dict[str, Any]) -> dict[str, Any]:
         report = parse_llm_json(reply)
     except ValueError as exc:
         raise LLMError(
-            "The model's reply wasn't valid JSON. Try again or pick another model."
+            tr("The model's reply wasn't valid JSON. Try again or pick another model.")
         ) from exc
     if not report.get("executive_summary"):
-        raise LLMError("The model's reply was missing the executive summary.")
+        raise LLMError(tr("The model's reply was missing the executive summary."))
     return store.save_analysis(stock["ticker"], model, report)
 
 
@@ -168,8 +169,11 @@ def chat(
         context["current_analysis"] = {
             k: analysis.get(k) for k in ("executive_summary", "verdict", "recommended_action")
         }
-    system = CHAT_SYSTEM_PROMPT.format(
-        context=json.dumps(context, default=str), charts=json.dumps(existing_charts)
+    system = (
+        CHAT_SYSTEM_PROMPT.format(
+            context=json.dumps(context, default=str), charts=json.dumps(existing_charts)
+        )
+        + llm_language_instruction()
     )
     messages = [{"role": "system", "content": system}]
     for msg in history[-20:]:
@@ -220,7 +224,7 @@ def run_thesis_check(stock: dict[str, Any], thesis: str) -> dict[str, Any]:
         }
     reply = openrouter.complete(
         [
-            {"role": "system", "content": THESIS_SYSTEM_PROMPT},
+            {"role": "system", "content": THESIS_SYSTEM_PROMPT + llm_language_instruction()},
             {"role": "user", "content": json.dumps(context, default=str)},
         ],
         api_key=api_key,
@@ -230,11 +234,11 @@ def run_thesis_check(stock: dict[str, Any], thesis: str) -> dict[str, Any]:
         result = parse_llm_json(reply)
     except ValueError as exc:
         raise LLMError(
-            "The model's reply wasn't valid JSON. Try again or pick another model."
+            tr("The model's reply wasn't valid JSON. Try again or pick another model.")
         ) from exc
     status = str(result.get("status", "")).strip().lower()
     if status not in THESIS_STATUSES or not result.get("summary"):
-        raise LLMError("The model's reply was missing a valid status or summary.")
+        raise LLMError(tr("The model's reply was missing a valid status or summary."))
     clean = {
         "status": status,
         "summary": str(result["summary"]),

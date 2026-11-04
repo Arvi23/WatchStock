@@ -3,8 +3,8 @@
 // order listed in index.html. Top-level code may only call functions from earlier files.
 
 // --- Metric Definitions (Fundamentals cards) ---
-const fmtPct  = v => v != null ? (v * 100).toFixed(1) + '%' : 'N/A';
-const fmtNum  = (d=2) => v => v?.toFixed(d) ?? 'N/A';
+const fmtPct  = v => v != null ? fmtN(v * 100, 1) + '%' : 'N/A';
+const fmtNum  = (d=2) => v => fmtN(v, d) ?? 'N/A';
 const METRIC_DESCRIPTIONS = {
     currentRatio:     { label: 'Current Ratio',      desc: 'Short-term assets vs liabilities. Above 1.0 means more assets than obligations.', format: fmtNum(2) },
     quickRatio:       { label: 'Quick Ratio',        desc: 'Current ratio excluding inventory — stricter liquidity test.', format: fmtNum(2) },
@@ -14,10 +14,10 @@ const METRIC_DESCRIPTIONS = {
     earningsGrowth:   { label: 'Earnings Growth',    desc: 'Year-over-year earnings change.', format: fmtPct },
     trailingEps:      { label: 'EPS (Trailing)',     desc: 'Earnings per share over the last 12 months.', format: v => fmtMoney(v, priceCurrency()) },
     forwardEps:       { label: 'EPS (Forward)',      desc: 'Analyst-estimated earnings per share for next 12 months.', format: v => fmtMoney(v, priceCurrency()) },
-    debtToEquity:     { label: 'Debt / Equity',      desc: 'Total debt relative to shareholders equity. Lower = less leverage risk.', format: v => v != null ? (v / 100).toFixed(2) + 'x' : 'N/A' },  // Yahoo sends percent
+    debtToEquity:     { label: 'Debt / Equity',      desc: 'Total debt relative to shareholders equity. Lower = less leverage risk.', format: v => v != null ? fmtN(v / 100, 2) + 'x' : 'N/A' },  // Yahoo sends percent
     freeCashflow:     { label: 'Free Cash Flow',     desc: 'Cash generated after capex. Positive = company funds itself without borrowing.', format: v => fmtBig(v, statementCurrency()) },
     dividendYield:    { label: 'Dividend Yield',     desc: 'Annual dividend as % of current price.',
-                        format: v => v != null ? (v * 100).toFixed(2) + '%' : 'N/A' },  // backend sends a fraction
+                        format: v => v != null ? fmtN(v * 100, 2) + '%' : 'N/A' },  // backend sends a fraction
     beta:             { label: 'Beta',               desc: 'Volatility vs the market. < 1.0 = defensive, > 1.5 = highly volatile.', format: fmtNum(2) },
     marketCap:        { label: 'Market Cap',         desc: 'Total market value of all outstanding shares.', format: v => fmtBig(v, priceCurrency()) },
 };
@@ -91,17 +91,17 @@ function renderValuationSection(metrics, vScore) {
             <div style="height:4px; background:#333; border-radius:2px; position:relative;">
                 <div style="position:absolute; top:-3px; width:10px; height:10px; border-radius:50%; background:var(--accent); left:calc(${pos}% - 5px);"></div>
             </div>
-            <div style="font-size:0.6rem; color:#888; margin-top:6px;">${pos}% of 52-week range${vScore?.position_pct != null ? ' · ' + (pos < 30 ? 'near bottom ↓' : pos > 70 ? 'near peak ↑' : 'mid-range') : ''}</div>
+            <div style="font-size:0.6rem; color:#888; margin-top:6px;">${t('{pct} of 52-week range', { pct: fmtN(pos, 1) + '%' })}${vScore?.position_pct != null ? ' · ' + (pos < 30 ? 'near bottom ↓' : pos > 70 ? 'near peak ↑' : 'mid-range') : ''}</div>
         </div>`;
     }
 
     document.getElementById('valuationData').innerHTML =
-        metricRow('Trailing P/E',  metrics.trailingPE?.toFixed(1))  +
-        metricRow('Forward P/E',   metrics.forwardPE?.toFixed(1),   metrics.forwardPE < metrics.trailingPE ? 'earnings growing ↑' : '') +
-        metricRow('PEG Ratio',     metrics.pegRatio?.toFixed(2),    metrics.pegRatio < 1 ? '< 1.0 = cheap for growth' : '') +
-        metricRow('Price / Book',  metrics.priceToBook?.toFixed(2)) +
-        metricRow('Price / Sales', metrics.priceToSalesTrailingTwelveMonths?.toFixed(2)) +
-        metricRow('EV / EBITDA',   metrics.enterpriseToEbitda?.toFixed(1)) +
+        metricRow('Trailing P/E',  fmtN(metrics.trailingPE, 1))  +
+        metricRow('Forward P/E',   fmtN(metrics.forwardPE, 1),   metrics.forwardPE < metrics.trailingPE ? 'earnings growing ↑' : '') +
+        metricRow('PEG Ratio',     fmtN(metrics.pegRatio, 2),    metrics.pegRatio < 1 ? '< 1.0 = cheap for growth' : '') +
+        metricRow('Price / Book',  fmtN(metrics.priceToBook, 2)) +
+        metricRow('Price / Sales', fmtN(metrics.priceToSalesTrailingTwelveMonths, 2)) +
+        metricRow('EV / EBITDA',   fmtN(metrics.enterpriseToEbitda, 1)) +
         rangeBar +
         (vScore ? `<div style="margin-top:10px; padding:8px; background:#1a1a1a; border:1px solid #333; text-align:center;">
             <div style="font-size:0.58rem; color:#888; margin-bottom:2px;">VALUATION SCORE</div>
@@ -162,7 +162,7 @@ function renderAnalystSection(analystData, aScore, upgrades) {
     document.getElementById('analystData').innerHTML =
         `<div style="display:flex; align-items:center; gap:10px; margin-bottom:10px;">
             <span style="font-size:1.1rem; font-weight:800; color:${recColor}; letter-spacing:1px;">${recLabel || '—'}</span>
-            <span style="font-size:0.65rem; color:#666;">${n ? n + ' analysts' : ''}</span>
+            <span style="font-size:0.65rem; color:#666;">${n ? t('{n} analysts', { n }) : ''}</span>
         </div>` +
         (mean ? `<div style="margin-bottom:10px;">
             <div style="height:4px; background:#333; border-radius:2px; overflow:hidden;">
@@ -170,13 +170,13 @@ function renderAnalystSection(analystData, aScore, upgrades) {
             </div>
             <div style="display:flex; justify-content:space-between; font-size:0.55rem; color:#555; margin-top:2px;"><span>Sell</span><span>Buy</span></div>
         </div>` : '') +
-        metricRow('Mean Target', tgt ? fmtMoney(tgt, priceCurrency()) : '—', upside != null ? `${upside > 0 ? '+' : ''}${upside}% upside` : '') +
+        metricRow('Mean Target', tgt ? fmtMoney(tgt, priceCurrency()) : '—', upside != null ? t('{pct} upside', { pct: (upside > 0 ? '+' : '') + fmtN(upside, 1) + '%' }) : '') +
         tgtRange +
         (upgradeList ? `<div style="margin-top:10px;">
             <div style="font-size:0.55rem; letter-spacing:1.5px; color:#555; margin-bottom:6px;">RECENT RATINGS</div>
             ${upgradeList}
             ${upgradeExtra ? `<div id="ratingsExtra" style="display:none;">${upgradeExtra}</div>
-            <button onclick="toggleExtra('ratingsExtra',this)" style="width:100%; margin-top:6px; padding:4px; background:transparent; border:1px solid #333; color:#666; font-size:0.62rem; cursor:pointer; letter-spacing:1px;">SHOW ${allUpgrades.length - 5} MORE</button>` : ''}
+            <button onclick="toggleExtra('ratingsExtra',this)" style="width:100%; margin-top:6px; padding:4px; background:transparent; border:1px solid #333; color:#666; font-size:0.62rem; cursor:pointer; letter-spacing:1px;">${t('SHOW {n} MORE', { n: allUpgrades.length - 5 })}</button>` : ''}
         </div>` : '') +
         (aScore ? `<div style="margin-top:10px; padding:8px; background:#1a1a1a; border:1px solid #333; text-align:center;">
             <div style="font-size:0.58rem; color:#888; margin-bottom:2px;">ANALYST SCORE</div>
@@ -195,20 +195,20 @@ function renderSmartMoneySection(metrics, sScore, insiderTxns) {
 
     const _isBuy  = tx => /purchase|bought|acqui|open market p|\bp\b/i.test(tx);
     const _isSell = tx => /sale|sold|dispos|\bs\b/i.test(tx);
-    const _txnColor = t => {
-        const tx = t.transaction || '';
+    const _txnColor = txn => {
+        const tx = txn.transaction || '';
         return _isBuy(tx) ? '#4caf50' : _isSell(tx) ? '#f44336' : '#888';
     };
-    const _txnLabel = t => {
-        const tx = t.transaction || '';
+    const _txnLabel = txn => {
+        const tx = txn.transaction || '';
         return _isBuy(tx) ? 'BUY' : _isSell(tx) ? 'SELL' : (tx || '?');
     };
-    const _txnRow = t => {
-        const color = _txnColor(t);
-        const label = _txnLabel(t);
-        const val   = t.value ? fmtBig(Math.abs(t.value), 'USD') : '';  // SEC filings are in USD
+    const _txnRow = tx => {
+        const color = _txnColor(tx);
+        const label = _txnLabel(tx);
+        const val   = tx.value ? fmtBig(Math.abs(tx.value), 'USD') : '';  // SEC filings are in USD
         const isUnknown = label === '?' || label === '';
-        const safeText  = (t.text || '').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+        const safeText  = (tx.text || '').replace(/"/g, '&quot;').replace(/</g, '&lt;');
         const revealText = safeText || '<span style="color:#555;font-style:italic;">No description in data — try UPDATE DATA to refresh.</span>';
         const pillStyle = `font-size:0.6rem; font-weight:700; padding:1px 6px; flex-shrink:0; margin-top:1px; cursor:pointer; letter-spacing:0.5px;`;
         const pillColor = isUnknown ? '#f5c518' : color;
@@ -219,12 +219,12 @@ function renderSmartMoneySection(metrics, sScore, insiderTxns) {
             ${pillHtml}
             <div style="flex:1; min-width:0;">
                 <div style="display:flex; justify-content:space-between; align-items:baseline; gap:4px;">
-                    <span style="color:#ccc; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${t.insider || ''}</span>
+                    <span style="color:#ccc; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${tx.insider || ''}</span>
                     <span style="color:${color}; white-space:nowrap; flex-shrink:0; font-family:monospace; font-weight:600;">${val}</span>
                 </div>
                 <div style="display:flex; justify-content:space-between; margin-top:2px;">
-                    ${t.title ? `<span style="font-size:0.58rem; color:#666; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${t.title}</span>` : '<span></span>'}
-                    <span style="font-size:0.58rem; color:#555; flex-shrink:0;">${t.date?.slice(0,10) || ''}</span>
+                    ${tx.title ? `<span style="font-size:0.58rem; color:#666; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${tx.title}</span>` : '<span></span>'}
+                    <span style="font-size:0.58rem; color:#555; flex-shrink:0;">${tx.date?.slice(0,10) || ''}</span>
                 </div>
                 <div class="txn-raw" style="display:none; font-size:0.62rem; color:#999; background:#161616; border:1px solid #2a2a2a; padding:5px 7px; margin-top:4px; line-height:1.5;">${revealText}</div>
             </div>
@@ -235,17 +235,17 @@ function renderSmartMoneySection(metrics, sScore, insiderTxns) {
     const txnExtra = allTxns.slice(5).map(_txnRow).join('');
 
     document.getElementById('smartMoneyData').innerHTML =
-        metricRow('Insider Ownership',       ins  != null ? (ins  * 100).toFixed(1) + '%' : '—') +
-        metricRow('Institutional Ownership', inst != null ? (inst * 100).toFixed(1) + '%' : '—') +
-        metricRow('Short % of Float',        short != null ? (short * 100).toFixed(1) + '%' : '—',
+        metricRow('Insider Ownership',       ins  != null ? fmtN(ins * 100, 1) + '%' : '—') +
+        metricRow('Institutional Ownership', inst != null ? fmtN(inst * 100, 1) + '%' : '—') +
+        metricRow('Short % of Float',        short != null ? fmtN(short * 100, 1) + '%' : '—',
             short > 0.15 ? '⚠ high' : short > 0.10 ? 'elevated' : '') +
-        metricRow('Short Ratio (days)',      shortR?.toFixed(1)) +
+        metricRow('Short Ratio (days)',      fmtN(shortR, 1)) +
         (flags.length ? flags.map(f => `<div style="font-size:0.63rem; color:#ff9800; background:#1a1a1a; border:1px solid #333; padding:6px 8px; margin-top:6px; line-height:1.4;">⚠ ${f}</div>`).join('') : '') +
         (txnList ? `<div style="margin-top:10px;">
             <div style="font-size:0.55rem; letter-spacing:1.5px; color:#555; margin-bottom:6px;">RECENT INSIDER TRANSACTIONS</div>
             ${txnList}
             ${txnExtra ? `<div id="txnExtra" style="display:none;">${txnExtra}</div>
-            <button onclick="toggleExtra('txnExtra',this)" style="width:100%; margin-top:6px; padding:4px; background:transparent; border:1px solid #333; color:#666; font-size:0.62rem; cursor:pointer; letter-spacing:1px;">SHOW ${allTxns.length - 5} MORE</button>` : ''}
+            <button onclick="toggleExtra('txnExtra',this)" style="width:100%; margin-top:6px; padding:4px; background:transparent; border:1px solid #333; color:#666; font-size:0.62rem; cursor:pointer; letter-spacing:1px;">${t('SHOW {n} MORE', { n: allTxns.length - 5 })}</button>` : ''}
         </div>` : '') +
         (sScore ? `<div style="margin-top:10px; padding:8px; background:#1a1a1a; border:1px solid #333; text-align:center;">
             <div style="font-size:0.58rem; color:#888; margin-bottom:2px;">SMART MONEY SCORE</div>
@@ -499,11 +499,11 @@ function populateDashboard(data) {
 // Lower is "better" for valuation multiples, higher for margins/growth; colour the
 // stock's own cells against the peer median accordingly.
 const PEER_COLUMNS = [
-    { key: 'trailingPE',     label: 'P/E',       fmt: v => v?.toFixed(1),            lowerIsBetter: true },
-    { key: 'forwardPE',      label: 'Fwd P/E',   fmt: v => v?.toFixed(1),            lowerIsBetter: true },
-    { key: 'pegRatio',       label: 'PEG',       fmt: v => v?.toFixed(2),            lowerIsBetter: true },
-    { key: 'profitMargins',  label: 'Net margin', fmt: v => v != null ? (v * 100).toFixed(1) + '%' : null },
-    { key: 'revenueGrowth',  label: 'Rev growth', fmt: v => v != null ? (v * 100).toFixed(1) + '%' : null },
+    { key: 'trailingPE',     label: 'P/E',       fmt: v => fmtN(v, 1),            lowerIsBetter: true },
+    { key: 'forwardPE',      label: 'Fwd P/E',   fmt: v => fmtN(v, 1),            lowerIsBetter: true },
+    { key: 'pegRatio',       label: 'PEG',       fmt: v => fmtN(v, 2),            lowerIsBetter: true },
+    { key: 'profitMargins',  label: 'Net margin', fmt: v => v != null ? fmtN(v * 100, 1) + '%' : null },
+    { key: 'revenueGrowth',  label: 'Rev growth', fmt: v => v != null ? fmtN(v * 100, 1) + '%' : null },
     { key: 'marketCap',      label: 'Mkt cap',   fmt: v => v != null ? fmtBig(v, 'USD') : null },
 ];
 
@@ -522,7 +522,7 @@ function renderPeersSection(peers) {
     };
     const rows = peers.rows.map(r => `
         <tr style="${r.is_self ? 'background:#1c2633;' : ''}">
-            <td class="pf-stock" ${r.is_self ? '' : `onclick="quickSearch(${esc(JSON.stringify(r.name || r.ticker))}, ${esc(JSON.stringify(r.ticker))})" title="Open ${esc(r.name || r.ticker)}"`}>
+            <td class="pf-stock" ${r.is_self ? '' : `onclick="quickSearch(${esc(JSON.stringify(r.name || r.ticker))}, ${esc(JSON.stringify(r.ticker))})" title="${esc(t('Open {name}', { name: r.name || r.ticker }))}"`}>
                 <b>${esc(r.ticker)}</b><span>${esc((r.name || '').slice(0, 22))}</span></td>
             ${PEER_COLUMNS.map(c => cell(c, r)).join('')}
         </tr>`).join('');

@@ -108,3 +108,17 @@ e.g. "33.4 vs industry median 45.0 (-26%)". Otherwise the fixed bands still appl
 industry lists are US companies, so non-USD stocks get no peers rather than a misleading
 comparison. Peer lists and peer metrics (one `info` call each) are cached in memory for
 24 h and fetched 4 at a time; a failed peer is skipped. Snapshot schema 3.
+
+## D15 — English/Romanian: English strings are the keys; language in a cookie (2026-11-04)
+gettext-style dictionaries (`static/js/i18n.js`, `watchstock/i18n.py`) keyed by the English
+text, so the code stays readable and a missing translation shows English instead of breaking.
+The frontend translates static and dynamically inserted text automatically (a
+MutationObserver matches exact strings; only text with variables needs `t()`). Containers
+of external text (news, LLM output, chat) are marked `no-i18n` so a headline like "Hold"
+isn't "translated". The language is a `ws_lang` cookie: known synchronously at page load,
+and sent with every request, so the backend localises score breakdowns, panel events and
+errors and tells the LLM to write in Romanian (JSON keys/enums stay English). Scores are
+now computed at serve time from the cached snapshot (cheap, language-aware, and formula
+changes apply without refetching). Switching language reloads the page. Numbers and dates
+follow the locale (1.234,56 in Romanian). Stored AI reports stay in the language they were
+written in. Tests enforce dictionary completeness.

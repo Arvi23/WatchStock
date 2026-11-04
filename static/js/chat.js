@@ -50,7 +50,7 @@ function appendChatMessage(role, text, isMarkdown) {
     const roleLabel = document.createElement('span');
     roleLabel.className = 'text-[10px] font-bold tracking-wider';
     roleLabel.style.color = isUser ? '#e0e0e0' : 'var(--accent)';
-    roleLabel.innerText = role;
+    roleLabel.innerText = t(role);
 
     const pBox = document.createElement('div');
     if (isUser) {
@@ -77,7 +77,7 @@ function appendChatMessage(role, text, isMarkdown) {
 async function sendChatToLLM(question) {
     // Show thinking indicator
     const thinkingBox = appendChatMessage("SYSTEM", "Analyzing...");
-    thinkingBox.innerHTML = '<div class="flex items-center gap-2"><div class="spinner w-3 h-3 border-2"></div><span style="color:var(--text-muted); font-size:0.75rem;">Processing query...</span></div>';
+    thinkingBox.innerHTML = '<div class="flex items-center gap-2"><div class="spinner w-3 h-3 border-2"></div><span style="color:var(--text-muted); font-size:0.75rem;">' + t('Processing query...') + '</span></div>';
 
     try {
         const result = await api('/api/chat', {
@@ -91,9 +91,9 @@ async function sendChatToLLM(question) {
         });
 
         if (!result) {
-            thinkingBox.innerText = "No response.";
+            thinkingBox.innerText = t("No response.");
         } else {
-            const replyText = result.reply_text || result.answer || "No response.";
+            const replyText = result.reply_text || result.answer || t("No response.");
             thinkingBox.innerHTML = renderMarkdown(replyText);
             conversationMessages.push({ role: 'assistant', content: replyText });
 
@@ -126,7 +126,7 @@ async function sendChatToLLM(question) {
             }
         }
     } catch(err) {
-        thinkingBox.innerText = "Error: " + err.message;
+        thinkingBox.innerText = t('Error: {msg}', { msg: err.message });
         thinkingBox.style.color = '#ff6b6b';
     }
     chatHistory.scrollTop = chatHistory.scrollHeight;
@@ -177,7 +177,7 @@ function handleUiAction(action) {
         const newCompany = action.company_name || '';
         const newTicker = action.ticker || '';
         if (newCompany && newTicker) {
-            appendChatMessage('SYSTEM', `Switching to ${newCompany} (${newTicker})...`);
+            appendChatMessage('SYSTEM', t('Switching to {name} ({ticker})...', { name: newCompany, ticker: newTicker }));
             conversationMessages = [];
             companyInput.value = newCompany;
             tickerInput.value = newTicker;

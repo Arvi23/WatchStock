@@ -11,7 +11,7 @@ async function loadPortfolio() {
         renderPortfolio();
     } catch (e) {
         document.getElementById('portfolioTable').innerHTML =
-            `<div style="font-size:0.7rem; color:#ff6b6b; padding:12px 0;">Couldn't load the portfolio: ${esc(e.message)}</div>`;
+            `<div style="font-size:0.7rem; color:#ff6b6b; padding:12px 0;">${esc(t("Couldn't load the portfolio: {msg}", { msg: e.message }))}</div>`;
     }
 }
 
@@ -24,7 +24,7 @@ function fmtSigned(v, fmt) {
 }
 
 function fmtPctSigned(v) {
-    return fmtSigned(v, x => x.toFixed(2) + '%');
+    return fmtSigned(v, x => fmtN(x, 2) + '%');
 }
 
 function renderPortfolio() {
@@ -46,33 +46,33 @@ function renderPortfolio() {
     }
 
     // One row of cards per currency (no FX conversion; see watchstock/portfolio.py).
-    summary.innerHTML = Object.entries(p.totals).map(([cur, t]) => `
+    summary.innerHTML = Object.entries(p.totals).map(([cur, tot]) => `
         <div class="pf-cards">
-            <div class="pf-card"><div class="k">Value${Object.keys(p.totals).length > 1 ? ' · ' + esc(cur) : ''}</div>
-                <div class="v">${fmtMoney(t.value, cur)}</div>
-                <div class="s" style="color:#666;">${t.positions} position${t.positions === 1 ? '' : 's'}</div></div>
+            <div class="pf-card"><div class="k">${Object.keys(p.totals).length > 1 ? esc(t('Value · {cur}', { cur })) : t('Value')}</div>
+                <div class="v">${fmtMoney(tot.value, cur)}</div>
+                <div class="s" style="color:#666;">${t(tot.positions === 1 ? '{n} position' : '{n} positions', { n: tot.positions })}</div></div>
             <div class="pf-card"><div class="k">Profit / loss</div>
-                <div class="v" style="color:${plColor(t.pl)};">${fmtSigned(t.pl, v => fmtMoney(v, cur))}</div>
-                <div class="s" style="color:${plColor(t.pl)};">${fmtPctSigned(t.pl_pct)}</div></div>
+                <div class="v" style="color:${plColor(tot.pl)};">${fmtSigned(tot.pl, v => fmtMoney(v, cur))}</div>
+                <div class="s" style="color:${plColor(tot.pl)};">${fmtPctSigned(tot.pl_pct)}</div></div>
             <div class="pf-card"><div class="k">Today</div>
-                <div class="v" style="color:${plColor(t.day_change)};">${fmtSigned(t.day_change, v => fmtMoney(v, cur))}</div>
-                <div class="s" style="color:${plColor(t.day_change)};">${fmtPctSigned(t.day_change_pct)}</div></div>
+                <div class="v" style="color:${plColor(tot.day_change)};">${fmtSigned(tot.day_change, v => fmtMoney(v, cur))}</div>
+                <div class="s" style="color:${plColor(tot.day_change)};">${fmtPctSigned(tot.day_change_pct)}</div></div>
             <div class="pf-card"><div class="k">Dividends / year</div>
-                <div class="v">${fmtMoney(t.annual_dividends, cur)}</div>
+                <div class="v">${fmtMoney(tot.annual_dividends, cur)}</div>
                 <div class="s" style="color:#666;">expected, at current rates</div></div>
         </div>`).join('');
 
     const rows = p.positions.map(pos => `
         <tr>
-            <td class="pf-stock" onclick="quickSearch(${esc(JSON.stringify(pos.name))}, ${esc(JSON.stringify(pos.ticker))})" title="Open ${esc(pos.name)}">
+            <td class="pf-stock" onclick="quickSearch(${esc(JSON.stringify(pos.name))}, ${esc(JSON.stringify(pos.ticker))})" title="${esc(t('Open {name}', { name: pos.name }))}">
                 <b>${esc(pos.ticker)}</b><span>${esc(pos.name.length > 18 ? pos.name.slice(0, 17) + '…' : pos.name)}</span></td>
-            <td>${pos.shares.toLocaleString('en-US', { maximumFractionDigits: 4 })}</td>
+            <td>${pos.shares.toLocaleString(LOCALE, { maximumFractionDigits: 4 })}</td>
             <td>${fmtMoney(pos.avg_cost, pos.currency)}</td>
             <td>${fmtMoney(pos.price, pos.currency)}</td>
             <td style="color:${plColor(pos.change_pct)};">${fmtPctSigned(pos.change_pct)}</td>
             <td>${fmtMoney(pos.value, pos.currency)}</td>
             <td style="color:${plColor(pos.pl)};">${fmtSigned(pos.pl, v => fmtMoney(v, pos.currency))}<br><span style="font-size:0.62rem;">${fmtPctSigned(pos.pl_pct)}</span></td>
-            <td>${pos.weight != null ? pos.weight.toFixed(1) + '%' : '—'}</td>
+            <td>${pos.weight != null ? fmtN(pos.weight, 1) + '%' : '—'}</td>
             <td>${thesisBadge(pos)}</td>
             <td><button class="pf-edit" onclick="openHoldingModal(${esc(JSON.stringify(pos.ticker))})" title="Edit or remove">EDIT</button></td>
         </tr>`).join('');
@@ -86,7 +86,7 @@ function renderPortfolio() {
     if (alloc && alloc.positions.length >= 2) {
         charts.style.display = 'grid';
         document.getElementById('allocPositionsTitle').textContent =
-            'BY POSITION' + (Object.keys(p.totals).length > 1 ? ` (${mainCur})` : '');
+            Object.keys(p.totals).length > 1 ? t('BY POSITION ({cur})', { cur: mainCur }) : t('BY POSITION');
         _allocCharts.push(doughnut('allocPositions', alloc.positions));
         _allocCharts.push(doughnut('allocSectors', alloc.sectors));
     } else {
@@ -112,7 +112,7 @@ function doughnut(canvasId, items) {
             cutout: '60%',
             plugins: {
                 legend: { position: 'right', labels: { color: '#bbb', boxWidth: 10, font: { size: 11 } } },
-                tooltip: { callbacks: { label: ctx => `${ctx.label}: ${ctx.parsed.toFixed(1)}%` } },
+                tooltip: { callbacks: { label: ctx => `${ctx.label}: ${fmtN(ctx.parsed, 1)}%` } },
             },
         },
     });
@@ -128,7 +128,7 @@ function parseNumber(text) {
 function openHoldingModal(ticker) {
     const existing = ticker ? _portfolio?.positions.find(p => p.ticker === ticker) : null;
     const tickerEl = document.getElementById('holdingTicker');
-    document.getElementById('holdingModalTitle').textContent = existing ? `Edit ${existing.ticker}` : 'Add position';
+    document.getElementById('holdingModalTitle').textContent = existing ? t('Edit {ticker}', { ticker: existing.ticker }) : t('Add position');
     tickerEl.value = existing ? existing.ticker : (ticker || '');
     tickerEl.readOnly = !!existing;
     document.getElementById('holdingShares').value = existing ? existing.shares : '';
@@ -169,7 +169,7 @@ async function saveHolding() {
     try {
         const res = await api('/api/portfolio', { method: 'PUT', body: { ticker, shares, avg_cost: avgCost, notes } });
         closeHoldingModal();
-        showToast(`Saved ${res.ticker} (${res.company_name}).`);
+        showToast(t('Saved {ticker} ({name}).', { ticker: res.ticker, name: res.company_name }));
         await loadPortfolio();
         loadToday();
     } catch (e) {
@@ -192,7 +192,7 @@ async function deleteHolding() {
     try {
         await api(`/api/portfolio/${encodeURIComponent(ticker)}`, { method: 'DELETE' });
         closeHoldingModal();
-        showToast(`Removed ${ticker} from the portfolio.`);
+        showToast(t('Removed {ticker} from the portfolio.', { ticker }));
         await loadPortfolio();
         loadToday();
     } catch (e) {
@@ -210,14 +210,14 @@ const THESIS_STYLE = {
 };
 
 function thesisBadge(pos) {
-    const t = JSON.stringify(pos.ticker);
+    const tj = JSON.stringify(pos.ticker);
     if (!pos.notes) {
-        return `<button class="pf-edit" onclick="openHoldingModal(${esc(t)})" title="Add a 'why I own it' note to enable thesis checks">ADD WHY</button>`;
+        return `<button class="pf-edit" onclick="openHoldingModal(${esc(tj)})" title="Add a 'why I own it' note to enable thesis checks">ADD WHY</button>`;
     }
     const c = pos.thesis_check;
-    if (!c) return `<button class="pf-edit" onclick="showThesis(${esc(t)}, true)" title="Ask the AI whether your reason still holds">CHECK</button>`;
+    if (!c) return `<button class="pf-edit" onclick="showThesis(${esc(tj)}, true)" title="Ask the AI whether your reason still holds">CHECK</button>`;
     const st = THESIS_STYLE[c.status] || THESIS_STYLE.unclear;
-    return `<button class="pf-edit" onclick="showThesis(${esc(t)}, false)" title="Checked ${esc(timeAgo(c.created_at))}"
+    return `<button class="pf-edit" onclick="showThesis(${esc(tj)}, false)" title="${esc(t('Checked {when}', { when: timeAgo(c.created_at) }))}"
         style="color:${st.color}; border-color:${st.color}66;">${st.label}</button>`;
 }
 
@@ -228,7 +228,7 @@ function openInfoModal(title, html) {
 }
 
 async function showThesis(ticker, runNew) {
-    openInfoModal(`${ticker} — thesis check`, '<div style="font-size:0.75rem; color:#888;"><span class="spinner" style="display:inline-block; width:12px; height:12px; border-width:2px; vertical-align:middle; margin-right:8px;"></span>' +
+    openInfoModal(t('{ticker} — thesis check', { ticker }), '<div style="font-size:0.75rem; color:#888;"><span class="spinner" style="display:inline-block; width:12px; height:12px; border-width:2px; vertical-align:middle; margin-right:8px;"></span>' +
         (runNew ? 'Asking the AI whether your reason still holds...' : 'Loading...') + '</div>');
     try {
         let result = runNew ? null : await api(`/api/portfolio/${encodeURIComponent(ticker)}/thesis`);
@@ -236,7 +236,7 @@ async function showThesis(ticker, runNew) {
         renderThesis(ticker, result);
         loadPortfolio();
     } catch (e) {
-        openInfoModal(`${ticker} — thesis check`, `<div style="font-size:0.75rem; color:#ff6b6b;">${esc(e.message)}</div>`);
+        openInfoModal(t('{ticker} — thesis check', { ticker }), `<div style="font-size:0.75rem; color:#ff6b6b;">${esc(e.message)}</div>`);
     }
 }
 
@@ -245,7 +245,7 @@ function renderThesis(ticker, r) {
     const list = (title, items, color) => items?.length ? `
         <div style="margin-top:12px;"><div style="font-size:0.6rem; letter-spacing:1.5px; color:${color}; margin-bottom:4px;">${title}</div>
         <ul style="margin:0 0 0 16px; padding:0; list-style:disc;">${items.map(i => `<li style="font-size:0.72rem; color:#ccc; margin:3px 0; line-height:1.45;">${esc(i)}</li>`).join('')}</ul></div>` : '';
-    openInfoModal(`${ticker} — thesis check`, `
+    openInfoModal(t('{ticker} — thesis check', { ticker }), `
         <div style="display:inline-block; font-size:0.75rem; font-weight:800; letter-spacing:1px; color:${st.color}; border:1px solid ${st.color}; padding:3px 10px;">${st.label}</div>
         <p style="font-size:0.8rem; color:#e0e0e0; line-height:1.55; margin:12px 0 0;">${esc(r.summary)}</p>
         ${list('SUPPORTS IT', r.supporting, '#4caf50')}
@@ -254,7 +254,7 @@ function renderThesis(ticker, r) {
         <div style="margin-top:14px; padding:8px 10px; background:#151515; border-left:2px solid #444; font-size:0.68rem; color:#999; line-height:1.5;">
             <span style="color:#666;">Your thesis:</span> ${esc(r.thesis)}</div>
         <div style="display:flex; justify-content:space-between; align-items:center; margin-top:14px;">
-            <span style="font-size:0.6rem; color:#555;">${esc(r.model || '')} · ${r.created_at ? esc(new Date(r.created_at).toLocaleString()) : ''} · AI opinion, not advice</span>
+            <span style="font-size:0.6rem; color:#555;">${esc(r.model || '')} · ${r.created_at ? esc(fmtDateTime(r.created_at)) : ''} · ${t('AI opinion, not advice')}</span>
             <button class="pf-edit" onclick="showThesis(${esc(JSON.stringify(ticker))}, true)">CHECK AGAIN</button>
         </div>`);
 }
@@ -269,7 +269,7 @@ function renderHoldingLine(data) {
     const cur = h.currency || priceCurrency();
     const pl = price != null ? (price - h.avg_cost) * h.shares : null;
     const plPct = price != null && h.avg_cost > 0 ? (price / h.avg_cost - 1) * 100 : null;
-    el.innerHTML = `<span style="color:#888;">You own</span> <b style="color:#e0e0e0;">${h.shares.toLocaleString('en-US', { maximumFractionDigits: 4 })}</b>
+    el.innerHTML = `<span style="color:#888;">You own</span> <b style="color:#e0e0e0;">${h.shares.toLocaleString(LOCALE, { maximumFractionDigits: 4 })}</b>
         <span style="color:#888;">@ ${fmtMoney(h.avg_cost, cur)}</span><br>
         <span style="color:${plColor(pl)}; font-family:monospace;">${fmtSigned(pl, v => fmtMoney(v, cur))} (${fmtPctSigned(plPct)})</span>`;
     el.style.display = 'block';
