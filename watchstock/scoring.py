@@ -105,12 +105,27 @@ def score_quality(metrics: dict) -> dict:
 # ------------------------------------------------------------------- valuation
 
 
-def score_valuation(metrics: dict) -> dict:
+# P/E relative to the industry median: ratio -> score (cheaper than peers scores higher).
+_RELATIVE_PE_BANDS = [(0.6, 90), (0.8, 78), (0.95, 64), (1.05, 55), (1.25, 42), (1.6, 28)]
+
+
+def _pe_component(label: str, pe: float, median: float | None, abs_bands, abs_else: float,
+                  weight: float) -> tuple[str, float, float]:  # fmt: skip
+    """P/E vs industry peers when a median exists, else fixed bands for all industries."""
+    if median:
+        ratio = pe / median
+        return (f"{label} {pe:.1f} vs industry median {median:.1f} ({(ratio - 1) * 100:+.0f}%)",
+                _bucket(ratio, _RELATIVE_PE_BANDS, 15), weight)  # fmt: skip
+    return (f"{label} {pe:.1f}", _bucket(pe, abs_bands, abs_else), weight)
+
+
+def score_valuation(metrics: dict, peer_medians: dict | None = None) -> dict:
     """How cheap the stock is vs earnings, book value and its own 52-week range.
 
-    Higher = cheaper. P/E bands are the same for every industry (a known
-    simplification until peer comparison exists).
+    Higher = cheaper. With industry peers (peers.py), P/E and forward P/E are judged
+    against the peer median; without them, against fixed bands for all industries.
     """
+    peer_medians = peer_medians or {}
     comps: list[tuple[str, float, float]] = []
     extra: Breakdown = []
     pos_pct = None
@@ -118,14 +133,18 @@ def score_valuation(metrics: dict) -> dict:
     pe, eps = metrics.get("trailingPE"), metrics.get("trailingEps")
     if pe is not None and 0 < pe < 500:
         bands = [(10, 90), (15, 80), (20, 68), (25, 55), (35, 40), (50, 25)]
-        comps.append((f"Trailing P/E {pe:.1f}", _bucket(pe, bands, 12), 0.25))
+        comps.append(
+            _pe_component("Trailing P/E", pe, peer_medians.get("trailingPE"), bands, 12, 0.25)
+        )
     elif eps is not None and eps <= 0:
         comps.append(("Trailing P/E: losses over last 12 months", 10, 0.25))
 
     fpe, feps = metrics.get("forwardPE"), metrics.get("forwardEps")
     if fpe is not None and 0 < fpe < 500:
         bands = [(10, 90), (15, 80), (20, 68), (25, 55), (35, 38)]
-        comps.append((f"Forward P/E {fpe:.1f}", _bucket(fpe, bands, 18), 0.20))
+        comps.append(
+            _pe_component("Forward P/E", fpe, peer_medians.get("forwardPE"), bands, 18, 0.20)
+        )
     elif feps is not None and feps <= 0:
         comps.append(("Forward P/E: losses expected", 10, 0.20))
 
@@ -354,11 +373,11 @@ def calculate_financial_risk(metrics: dict) -> dict:
 # ------------------------------------------------------------------------ all
 
 
-def compute_all(metrics: dict, analyst_data: dict) -> dict:
+def compute_all(metrics: dict, analyst_data: dict, peer_medians: dict | None = None) -> dict:
     """Every score for one stock, in the shape the UI expects."""
     pillars = {
         "quality": score_quality(metrics),
-        "valuation": score_valuation(metrics),
+        "valuation": score_valuation(metrics, peer_medians),
         "analyst": score_analyst(metrics, analyst_data),
         "smart_money": score_smart_money(metrics),
     }

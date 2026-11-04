@@ -1,6 +1,6 @@
 [project]
 name = "watchstock"
-version = "0.6.0"
+version = "0.7.0"
 description = "Personal stock analysis terminal: Yahoo Finance data, explainable scores, optional LLM analysis."
 readme = "README.md"
 requires-python = ">=3.12"

@@ -83,21 +83,27 @@ Read this first. Update it at the end of every batch or before your context runs
       portfolio table; previous check passed to the next one
 - [x] 88 backend tests; UI smoke covers the Today panel and thesis flow
 
-### Batch 6 — Next (not started)
-1. **Peer comparison** (deferred from batch 5): fetch 4-6 industry peers (yfinance
-   `Ticker.info["industryKey"]` → `yf.Industry(key).top_companies`), show a small
-   peer table (P/E, fwd P/E, PEG, margin, growth) on the Finance tab, and make the valuation
-   P/E bands relative to the peer median (see D8). Cache peers per industry for a day.
-2. **Price chart fallback** if TradingView's free widget lacks BVB data (owner to confirm):
-   `Ticker.history(period="1y")` → Chart.js line chart.
-3. **Desktop shortcut** created by `start.bat` on first run (dad-friendliness).
-4. Optional: scheduled morning digest (email or Windows toast) once the panel proves useful.
+### Batch 6 — Peers + polish  *(branch `batch-6-peers`, PR #6, stacked on #5)* ✅
+- [x] Industry peer comparison (D14): `peers.py`, `yahoo.fetch_industry_peers` / `fetch_key_metrics`,
+      `services.load_peers` (US-listed only, 24 h cache, 4 parallel); Finance tab "Industry peers" table
+      with the stock highlighted vs the median; P/E and forward P/E scored relative to the peer median
+- [x] Snapshot schema 3 (old cached snapshots refetch); LLM context includes peer medians
+- [x] `start.bat` creates a Desktop shortcut on first run (once; marker `data\.shortcut-created`)
+- [x] Debt/Equity card shows "0.30x" like the breakdown (Yahoo's raw value is percent)
+- [x] 96 backend tests; UI smoke checks the peer table and relative P/E
+
+### Ideas for later (not planned)
+- Own price chart (`Ticker.history`) if TradingView ever fails for a market the owner uses
+  (owner confirmed TradingView works, including BVB, on 2026-11-04).
+- Scheduled morning digest (email / Windows toast) if the "Your stocks" panel proves useful.
+- Peer comparison for non-US stocks (would need a different peer source).
+- Portfolio history (value over time) — needs a daily snapshot job.
 
 ## Status
-**Paused 2026-11-04 after batch 5** (owner: "we'll stop for today"). Batches 1-5 done;
-PRs #1-#5 are stacked, CI-green, and wait for the owner to merge in order. The owner's folder
-`E:\WatchStock\WatchStock` has everything through batch 5. Next session: start with
-batch 6 (plan above), after checking the "Needs live testing" boxes the owner has reported back on.
+Batches 1-6 done. PR #1 merged by the owner; #2-#6 are stacked and CI-green. **Owner action:**
+on PR #2 change the base to `main` (Edit next to the title), merge, click "Delete branch";
+GitHub then retargets #3 to `main`, and so on. (Agents may not merge or retarget PRs here.)
+The owner's folder `E:\WatchStock\WatchStock` has everything through batch 6.
 
 Notes for the next agent:
 - The sidebar "you own" P/L uses the snapshot price (up to 4 h old); the portfolio table
@@ -106,6 +112,8 @@ Notes for the next agent:
   `PLAYWRIGHT_BROWSERS_PATH` pointing at a Chromium matching playwright 1.63.0).
 
 ## Needs live testing (owner, on Windows)
+Owner reported 2026-11-04 evening: batches 1-5 tested, "it all seems to work" (incl. TradingView on BVB).
+
 Batch 1 (owner tested 2026-11-04: works; BVB chart said "symbol doesn't exist" → fixed in batch 2;
 first run without key "froze / lost connection" → likely browser opened too early, fixed in batch 2):
 - [x] start.bat first run, search, news, AI report with the free nemotron model
@@ -138,6 +146,12 @@ Batch 5:
       (dates come from Yahoo's calendar; spot-check one against the company's IR page)
 - [ ] Add a "why I own it" note to a position → CHECK → verdict with evidence appears; badge in table
 - [ ] The free model returns valid JSON for the thesis check (if not: note the error text)
+
+Batch 6:
+- [ ] Finance tab "Industry peers" table appears for a US stock (e.g. MSFT, JPM) with sensible peers
+- [ ] Valuation breakdown shows "P/E ... vs industry median ..."
+- [ ] First start after the update creates a "WatchStock" shortcut on the Desktop, and it launches the app
+- [ ] Opening a stock for the first time is still reasonably fast (peers add up to 5 Yahoo calls, cached a day)
 
 ## Open questions for the owner
 - (answered) Dad holds mostly US stocks → currency formatting stays in batch 3, no rush.

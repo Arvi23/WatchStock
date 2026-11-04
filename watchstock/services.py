@@ -5,11 +5,12 @@ which is stored separately (see store.save_analysis) because it's slow and costs
 """
 
 import logging
+from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime
 from typing import Any
 from urllib.parse import urlparse
 
-from watchstock import config, scoring, store, symbols
+from watchstock import config, peers, scoring, store, symbols, ttl_cache
 from watchstock.providers import yahoo
 from watchstock.providers.yahoo import MarketDataError
 
@@ -17,7 +18,7 @@ log = logging.getLogger(__name__)
 
 # Bump when the snapshot shape changes; older cached snapshots are then refetched
 # instead of being sent to a UI that no longer understands them.
-SNAPSHOT_SCHEMA = 2
+SNAPSHOT_SCHEMA = 3  # 3: industry peers + industryKey
 
 
 def normalize_ticker(ticker: str) -> str:
@@ -35,6 +36,46 @@ def _domain(website: str | None) -> str | None:
     return netloc.removeprefix("www.") or None
 
 
+PEER_LIMIT = 5
+
+
+def load_peers(ticker: str, name: str, metrics: dict) -> dict[str, Any] | None:
+    """Industry peer comparison, or None when unavailable.
+
+    US-listed stocks only: Yahoo's industry lists are US companies, so comparing a
+    Bucharest bank with them would mislead. Industry lists and peer metrics are cached
+    for a day in memory; peers are fetched 4 at a time.
+    """
+    key = metrics.get("industryKey")
+    if not key or (metrics.get("currency") or "USD") != "USD":
+        return None
+    try:
+        candidates = ttl_cache.get_or_set(
+            f"industry:{key}", config.PEERS_TTL_SECONDS,
+            lambda: yahoo.fetch_industry_peers(key, limit=PEER_LIMIT + 3),
+        )  # fmt: skip
+    except MarketDataError as exc:
+        log.warning("peer list unavailable for %s (%s): %s", ticker, key, exc)
+        return None
+    chosen = [c for c in candidates if c["ticker"] != ticker][:PEER_LIMIT]
+
+    def one(candidate: dict) -> dict | None:
+        t = candidate["ticker"]
+        try:
+            m = ttl_cache.get_or_set(
+                f"peer:{t}", config.PEERS_TTL_SECONDS, lambda: yahoo.fetch_key_metrics(t)
+            )
+        except MarketDataError:
+            return None
+        return {**m, "ticker": t, "name": m.get("name") or candidate["name"]}
+
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        rows = [r for r in pool.map(one, chosen) if r]
+    if not rows:
+        return None
+    return peers.build_comparison(ticker, name, metrics, rows, metrics.get("industry"))
+
+
 def build_snapshot(ticker: str, fallback_name: str = "") -> dict[str, Any]:
     """Fetch everything live. Raises MarketDataError if the core data is unavailable."""
     profile = yahoo.fetch_profile(ticker)
@@ -46,10 +87,12 @@ def build_snapshot(ticker: str, fallback_name: str = "") -> dict[str, Any]:
         news, warnings = [], ["News could not be loaded."]
 
     metrics = profile["metrics"]
+    name = profile.get("name") or fallback_name or ticker
+    comparison = load_peers(ticker, name, metrics)
     return {
         "schema": SNAPSHOT_SCHEMA,
         "ticker": ticker,
-        "company_name": profile.get("name") or fallback_name or ticker,
+        "company_name": name,
         "company_domain": _domain(metrics.get("website")),
         "as_of": store.utcnow_iso(),
         "financial_data": {
@@ -61,7 +104,10 @@ def build_snapshot(ticker: str, fallback_name: str = "") -> dict[str, Any]:
         },
         "news": news,
         "warnings": warnings,
-        **scoring.compute_all(metrics, profile["analyst_data"]),
+        "peers": comparison,
+        **scoring.compute_all(
+            metrics, profile["analyst_data"], comparison["medians"] if comparison else None
+        ),
     }
 
 

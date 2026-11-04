@@ -49,7 +49,8 @@ _METRIC_FIELDS = [
     # Ownership / short interest
     "shortPercentOfFloat", "shortRatio", "heldPercentInstitutions", "heldPercentInsiders",
     # Meta
-    "country", "website", "sector", "industry", "currency", "financialCurrency", "exchange",
+    "country", "website", "sector", "industry", "industryKey", "currency", "financialCurrency",
+    "exchange",
 ]  # fmt: skip
 
 _ANALYST_FIELDS = [
@@ -211,6 +212,42 @@ def fetch_market_news(count: int = 10) -> list[dict[str, Any]]:
     except Exception as exc:
         raise MarketDataError(f"Could not fetch market news: {exc}") from exc
     return [n for n in (normalize_news_item(i) for i in raw or []) if n]
+
+
+# -------------------------------------------------------------------- peers
+
+# The few fields the peer table and relative valuation need.
+PEER_FIELDS = [
+    "trailingPE", "forwardPE", "pegRatio", "priceToBook", "profitMargins",
+    "revenueGrowth", "marketCap", "currency",
+]  # fmt: skip
+
+
+def fetch_industry_peers(industry_key: str, limit: int = 8) -> list[dict[str, Any]]:
+    """Largest US companies in a Yahoo industry (e.g. "software-infrastructure")."""
+    try:
+        df = yf.Industry(industry_key).top_companies
+    except Exception as exc:
+        raise MarketDataError(f"Could not load industry {industry_key!r}: {exc}") from exc
+    if df is None or df.empty:
+        return []
+    return [
+        {"ticker": str(symbol), "name": str(row.get("name") or symbol)}
+        for symbol, row in df.head(limit).iterrows()
+    ]
+
+
+def fetch_key_metrics(ticker: str) -> dict[str, Any]:
+    """Only `info` (one request), not the full profile: used for each peer."""
+    try:
+        info = yf.Ticker(ticker).info or {}
+    except Exception as exc:
+        raise MarketDataError(f"Yahoo Finance request failed for {ticker}: {exc}") from exc
+    if not info.get("longName") and not info.get("shortName"):
+        raise MarketDataError(f"No data found for ticker {ticker!r}")
+    out = {k: _clean(info.get(k)) for k in PEER_FIELDS}
+    out["name"] = info.get("shortName") or info.get("longName")
+    return out
 
 
 # ------------------------------------------------------------------- events

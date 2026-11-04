@@ -115,6 +115,15 @@ const check = (name, ok, detail = '') => { if (!ok) failures.push(`${name}${deta
   await page.click('.tab-btn[data-target="tab-finance"]');
   await page.click('[data-score-key="quality"]');
   check('quality breakdown', /Net margin 36\.0%/.test(await text('#popoverContent')), await text('#popoverContent'));
+  await page.evaluate(() => hideScoreBreakdown());
+  await page.click('[data-score-key="valuation"]');
+  check('relative P/E in valuation', /Trailing P\/E 33\.4 vs industry median 45\.0 \(-26%\)/.test(await text('#popoverContent')), await text('#popoverContent'));
+  await page.evaluate(() => hideScoreBreakdown());
+  const peersText = await text('#peersTable');
+  check('peer table', /ORCL/.test(peersText) && /CRM/.test(peersText) && /Peer median/.test(peersText), peersText);
+  await page.evaluate(() => document.getElementById('peersSection').scrollIntoView());
+  await shot('peers');
+  await page.click('[data-score-key="quality"]');
   await shot('popover');
   await page.evaluate(() => { hideScoreBreakdown(); showScoreExplanation('long_term'); });
   check('safety modal', /Debt\/Equity 0\.30x/.test(await text('#scoreModalBody')));

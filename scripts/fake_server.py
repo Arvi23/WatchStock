@@ -29,6 +29,7 @@ def fetch_profile(ticker):
         raise yahoo.MarketDataError("429 Too Many Requests (fake)")
     p = copy.deepcopy(SAMPLE_PROFILE)
     m = p["metrics"]
+    m["industryKey"] = "software-infrastructure"
     if ticker.endswith(".RO"):  # Bucharest: everything in RON
         p["name"] = "Banca Transilvania S.A."
         m.update(currency="RON", financialCurrency="RON", currentPrice=29.5, marketCap=2.4e10)
@@ -58,6 +59,32 @@ def fetch_quotes(tickers):
         return -6.5 if t == "NVDA" else 1.2  # NVDA: a "big move" for the Today panel
 
     return {t: {"price": 100.0, "change_pct": chg(t), "currency": cur(t)} for t in tickers}
+
+
+def fetch_industry_peers(industry_key, limit=8):
+    return [
+        {"ticker": t, "name": n}
+        for t, n in [
+            ("MSFT", "Microsoft"),
+            ("ORCL", "Oracle"),
+            ("ADBE", "Adobe"),
+            ("CRM", "Salesforce"),
+        ]
+    ][:limit]
+
+
+def fetch_key_metrics(ticker):
+    pe = {"ORCL": 40.0, "ADBE": 45.0, "CRM": 50.0}.get(ticker, 30.0)
+    return {
+        "name": ticker,
+        "trailingPE": pe,
+        "forwardPE": pe * 0.8,
+        "pegRatio": 2.0,
+        "profitMargins": 0.2,
+        "revenueGrowth": 0.1,
+        "marketCap": 2e11,
+        "currency": "USD",
+    }
 
 
 def fetch_events(ticker):
@@ -147,7 +174,7 @@ def complete(messages, *, api_key, model, json_mode=True):
 
 def install_fakes():
     for fn in (fetch_profile, fetch_news, fetch_quotes, fetch_indices, fetch_market_news,
-               fetch_movers, search, fetch_events):  # fmt: skip
+               fetch_movers, search, fetch_events, fetch_industry_peers, fetch_key_metrics):  # fmt: skip
         setattr(yahoo, fn.__name__, fn)
     openrouter.complete = complete
 
